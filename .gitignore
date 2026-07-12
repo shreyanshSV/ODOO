@@ -1,17 +1,11 @@
-/node_modules
-/.next
-/out
-/build
-next-env.d.ts
-*.tsbuildinfo
-
-# env
+node_modules
+.next
+dist
+build
 .env
-.env*.local
-
-# prisma
-/prisma/*.db
-
-# os
+.env.local
+.turbo
+*.log
+coverage
 .DS_Store
 Thumbs.db
