@@ -15,3 +15,11 @@ next-env.d.ts
 # os
 .DS_Store
 Thumbs.db
+
+# local AI/dev handoff notes (not part of the shipped project)
+MEMORY.md
+
+# python tool build artifacts
+__pycache__/
+*.pyc
+cps/dist/

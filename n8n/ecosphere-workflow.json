@@ -1,0 +1,334 @@
+{
+  "name": "EcoSphere – ESG Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ecosphere",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ecosphere"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "value": "COMPLIANCE",
+              "output": 0
+            },
+            {
+              "value": "APPROVAL",
+              "output": 1
+            },
+            {
+              "value": "BADGE",
+              "output": 2
+            },
+            {
+              "value": "ENVIRONMENTAL",
+              "output": 3
+            }
+          ]
+        },
+        "dataType": "string",
+        "value1": "={{ $json.body.event }}",
+        "fallbackOutput": "extra"
+      },
+      "id": "switch-event",
+      "name": "Route by Event",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "subject",
+              "value": "=⚠️ Compliance Issue: {{ $json.body.payload.title }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.body.payload.message }}"
+            },
+            {
+              "name": "channel",
+              "value": "compliance"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-compliance",
+      "name": "Format Compliance Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 100]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "subject",
+              "value": "=✅ Approval Update: {{ $json.body.payload.title }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.body.payload.message }}"
+            },
+            {
+              "name": "channel",
+              "value": "approvals"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-approval",
+      "name": "Format Approval Notice",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 260]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "subject",
+              "value": "=🏅 Badge Unlocked: {{ $json.body.payload.title }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.body.payload.message }}"
+            },
+            {
+              "name": "channel",
+              "value": "gamification"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-badge",
+      "name": "Format Badge Unlock",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 420]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "subject",
+              "value": "=🌿 Environmental Report: {{ $json.body.payload.title }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.body.payload.message }}"
+            },
+            {
+              "name": "channel",
+              "value": "environmental"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-environmental",
+      "name": "Format Environmental Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 580]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "subject",
+              "value": "=📋 EcoSphere Event: {{ $json.body.event }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ JSON.stringify($json.body.payload) }}"
+            },
+            {
+              "name": "channel",
+              "value": "general"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-fallback",
+      "name": "Format Unknown Event",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [720, 740]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "merge-all",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, event: $json.body?.event ?? 'unknown', channel: $json.channel ?? 'general' }) }}",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Route by Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Event": {
+      "main": [
+        [
+          {
+            "node": "Format Compliance Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Approval Notice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Badge Unlock",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Environmental Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Unknown Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Compliance Alert": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Approval Notice": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Badge Unlock": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Environmental Alert": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Unknown Event": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "EcoSphere",
+      "id": "ecosphere-tag"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ecosphere-local"
+  }
+}
