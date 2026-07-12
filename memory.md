@@ -332,9 +332,33 @@ Mapping of the ESG spec's Governance module → this app (`/governance`):
 | Compliance Issue Ownership rule (§8) | Every issue has Owner + Due Date; **overdue-while-open issues flagged red** |
 | Governance Score | Gauge = 0.5·ack-rate + 0.4·resolved-rate − 4·overdue (weighted G-pillar score) |
 
+## 🔌 API Integration status
+
+All dashboard sections are now backed by real REST APIs (Express + SQLite fallback). Governance
+and Gamification got full backends in migrations **016/017 (SQLite)** and **017/018 (Postgres)**,
+seeded by `apps/api/src/database/seeds/esg.seed.ts` (auto-runs on boot, idempotent):
+
+- **Governance** → `GET /api/v1/governance/{summary,policies,audits,issues}`,
+  `POST/DELETE /governance/policies/:id/acknowledge`, `PATCH /governance/issues/:id`
+- **Gamification** → `GET /api/v1/gamification/{profile,badges,rewards,challenges,leaderboard}`,
+  `POST /gamification/rewards/:id/redeem`
+- Tables: `esg_policies`, `policy_acknowledgements`, `esg_audits`, `compliance_issues`,
+  `gam_points`, `gam_badges`, `gam_rewards`, `gam_reward_redemptions`, `gam_challenges`
+- **Notifications** → `government_notifications` table seeded by `gov-notifications.seed.ts` (7 real
+  Indian gov notifications: MeitY DPDP, MCA CSR, CBIC GST, Labour min-wage, EPFO, SEBI BRSR, CBDT TDS).
+  `POST /notifications/sync` re-seeds idempotently and returns the live count.
+- Frontend pages use TanStack Query (queries + mutations with invalidation) — no more localStorage.
+- **User input / create forms** (reusable `components/modal.tsx`): Governance → *Raise Issue*
+  (`POST /governance/issues`), Gamification → *New Challenge* (`POST /gamification/challenges`),
+  Calendar → *Add Deadline* (`POST /dashboard/deadlines`). All validate server-side (400 on missing
+  required fields) and invalidate their queries so new records appear immediately.
+- Policy Generator (`/policies`) stays intentionally client-side (template generator).
+- ⚠️ SQLite fallback translates `$n → ?` **positionally**, so in any query the `$1,$2,…`
+  placeholders must appear in ascending order in the SQL text (see `loadPolicies` note).
+
 ## 🎮 Gamification / Point System (spec-aligned)
 
-Implemented at `/gamification`, persisted in `localStorage` (`ecosphere-gamify`):
+Implemented at `/gamification`, **backed by the gamification API** (per-user XP ledger in `gam_points`):
 
 - **XP** — lifetime experience; drives **Level** (500 XP per level) and Leaderboard rank
 - **Points** — redeemable balance = total XP − points spent
