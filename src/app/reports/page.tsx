@@ -1,4 +1,4 @@
-import { Leaf, Users, ShieldCheck, BarChart3, FileDown, Eye } from "lucide-react";
+import { Leaf, Users, ShieldCheck, BarChart3, FileDown, Eye, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getEsgSnapshot } from "@/lib/esg";
 import { Card, ModuleTabs, PageHeader, Pill, ScoreTile, Table, EmptyState } from "@/components/ui";
@@ -241,6 +241,14 @@ export default async function ReportsPage({
               >
                 <FileDown size={14} /> Excel
               </a>
+              {r.type === "environmental" && (
+                <a
+                  href={`/api/reports/pdf?type=environmental${filterSuffix}`}
+                  className="btn-ghost"
+                >
+                  <FileText size={14} /> PDF
+                </a>
+              )}
               <PrintButton />
             </div>
           </Card>
@@ -304,6 +312,14 @@ export default async function ReportsPage({
                 >
                   <FileDown size={14} /> Excel
                 </a>
+                {type === "environmental" && (
+                  <a
+                    href={`/api/reports/pdf?type=environmental${filterSuffix}`}
+                    className="btn-ghost"
+                  >
+                    <FileText size={14} /> PDF
+                  </a>
+                )}
                 <PrintButton />
               </div>
             }

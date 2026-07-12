@@ -1,4 +1,4 @@
-import { Trash2, Zap } from "lucide-react";
+import { Trash2, Zap, FileDown } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ENV_TABS, EMISSION_SOURCES } from "@/lib/nav";
 import { Card, ModuleTabs, PageHeader, Table } from "@/components/ui";
@@ -27,6 +27,11 @@ export default async function CarbonTransactionsPage() {
         title="Environmental: Carbon Transactions"
         subtitle={`${fmtNum(txns.length)} records · ${fmtNum(totalKg / 1000, 1)} t CO₂ total`}
         accent="text-env"
+        actions={
+          <a href="/api/reports/pdf?type=environmental" className="btn-primary flex items-center gap-1.5">
+            <FileDown size={15} /> Export PDF
+          </a>
+        }
       />
       <ModuleTabs active="Environmental" />
       <SubNav items={ENV_TABS} />

@@ -32,7 +32,7 @@ export default async function GoalsPage() {
       <SubNav items={ENV_TABS} />
 
       <Card title="New Goal" className="mb-4">
-        <form action={createGoal} className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+        <form action={createGoal} className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div className="sm:col-span-2">
             <label className="label">Name</label>
             <input name="name" required className="input" placeholder="Reduce Fleet Emissions" />
@@ -51,10 +51,6 @@ export default async function GoalsPage() {
           <div>
             <label className="label">Target CO₂ (t)</label>
             <input name="targetCo2" type="number" step="any" className="input" placeholder="500" />
-          </div>
-          <div>
-            <label className="label">Current CO₂ (t)</label>
-            <input name="currentCo2" type="number" step="any" className="input" placeholder="390" />
           </div>
           <div className="sm:col-span-2">
             <label className="label">Deadline</label>
