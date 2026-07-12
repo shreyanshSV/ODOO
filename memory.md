@@ -1,18 +1,30 @@
 # EcoSphere Governance Module — Project Memory
 
-> **Last Updated:** 2026-07-12T13:25:00+05:30
-> **Status:** Phase 1 (Foundation) — COMPLETE — SQLite Zero-Setup Fallback & Premium Login UI Enabled
+> **Last Updated:** 2026-07-12T14:30:00+05:30
+> **Status:** Phase 1 (Foundation) — COMPLETE · Phase 8 (Frontend Pages) — COMPLETE — All 10 sidebar sections now workable + upgraded glass/aurora UI
 
 ---
 
 ## 🎯 Project Overview
 
-**Project:** EcoSphere  
-**Sub-Module:** GOVERNANCE  
-**Tagline:** AI-Powered Legal Intelligence & Compliance System  
-**Purpose:** Enterprise-grade compliance module that acts as an AI Compliance Officer for Indian laws  
+**Project:** EcoSphere — **ESG Management Platform** (Odoo hackathon challenge)
+**Sub-Module (this repo):** GOVERNANCE + Gamification
+**Tagline:** Measure, manage & improve Environmental, Social and Governance performance
 
-The module monitors all EcoSphere operations (HR, Finance, Procurement, IT, Data) and validates them against Indian Government laws in real-time. It detects violations, explains them, calculates severity, provides solutions, and maintains immutable audit logs.
+EcoSphere integrates ESG directly into day-to-day ERP operations across four core modules:
+- **Environmental** — carbon accounting, emission factors, sustainability goals, carbon reports
+- **Social** — CSR activities, employee participation, diversity metrics, engagement
+- **Governance** — ESG policies, policy acknowledgements, audits, compliance issue tracking, governance reports/score
+- **Gamification** — challenges, XP, badges, rewards, leaderboards
+
+**Scoring:** Environmental / Social / Governance scores → Department Total Score → Overall ESG Score
+(default weighting Env 40% / Social 30% / Gov 30%, configurable per org).
+
+> This repo delivers the Governance module (reframed to the ESG spec: ESG Policies, Policy
+> Acknowledgements, Audits, Compliance Issues with Owner/Due-Date/Severity/Status + overdue
+> flagging, Governance Score) plus the cross-cutting **Gamification / Point System**. It also
+> retains an AI legal-intelligence layer (Indian-law compliance engine, smart search, AI assistant)
+> built earlier as the governance-compliance backbone.
 
 ---
 
@@ -146,6 +158,18 @@ ecosphere-governance/
 | Dashboard Layout | ✅ Done | Sidebar navigation, 10 routes, user profile |
 | Dashboard Page | ✅ Done | 18KB with all widgets (compliance score, risk, timeline, etc.) |
 | Search Page | ✅ Done | Google-style search bar, results cards |
+| AI Assistant Page | ✅ Done | `/assistant` — session list, chat composer, citation pills, quick prompts (wired to assistant.* API) |
+| Live Monitor Page | ✅ Done | `/monitor` — compliance-check simulator + auto-refreshing event stream (compliance.check/getEvents) |
+| Compliance Calendar Page | ✅ Done | `/calendar` — real month grid with deadline markers + upcoming list (dashboard.getDeadlines) |
+| Notifications Page | ✅ Done | `/notifications` — severity filters, AI impact analysis, sync trigger (notifications.list/sync) |
+| Policy Generator Page | ✅ Done | `/policies` — 6 law-referenced templates, client-side generation, TXT download + print |
+| Legal Knowledge Page | ✅ Done | `/knowledge` — act search/filter master-detail with sections & penalties (knowledge.listActs/getAct) |
+| Audit Trail Page | ✅ Done | `/audit` — filterable immutable log, expandable rows, SHA-256 signatures, CSV export (audit.getLogs) |
+| Settings Page | ✅ Done | `/settings` — profile, org, localStorage-backed preferences, security & system info |
+| ESG Governance Page | ✅ Done | `/governance` — Governance Score gauge, ESG Policies + acknowledgement rate, Audits, Compliance Issues (Owner/Due Date/Severity/Status, overdue flag, click-to-advance status). Aligns to ESG spec §6/§8 |
+| Gamification Page | ✅ Done | `/gamification` — XP & redeemable points balance, level bar, auto-award Badges (unlock rules), Rewards catalog with working redemption (stock + point deduction, persisted), Challenges lifecycle, Leaderboard |
+| Shared PageHeader | ✅ Done | `components/page-header.tsx` — consistent gradient page hero across sections |
+| UI Design Upgrade | ✅ Done | Aurora ambient bg, card-lift hover, shimmer skeletons, gradient buttons, pulse dots, active nav accent bar |
 | API Client | ✅ Done | Typed Axios client with interceptors, including register call |
 | Auth Store | ✅ Done | Zustand with persistence |
 | Root Redirect | ✅ Done | Added root page redirecting `/` to `/login` |
@@ -188,16 +212,16 @@ ecosphere-governance/
 - [ ] Risk heatmap endpoint
 - [ ] Timeline endpoint
 
-### Phase 8: Remaining Frontend Pages (8 pages)
-- [ ] AI Legal Assistant (chatbot page)
-- [ ] Live Compliance Monitor page
-- [ ] Compliance Calendar page
-- [ ] Government Notification Center page
-- [ ] Auto Policy Generator page
-- [ ] Smart Audit Trail page
-- [ ] Compliance Reports & Analytics page
-- [ ] Legal Knowledge Browser page
-- [ ] Settings page
+### Phase 8: Remaining Frontend Pages — COMPLETE ✅ (all 10 nav sections workable)
+- [x] AI Legal Assistant (chatbot page) — `/assistant`
+- [x] Live Compliance Monitor page — `/monitor`
+- [x] Compliance Calendar page — `/calendar`
+- [x] Government Notification Center page — `/notifications`
+- [x] Auto Policy Generator page — `/policies`
+- [x] Smart Audit Trail page — `/audit`
+- [x] Legal Knowledge Browser page — `/knowledge`
+- [x] Settings page — `/settings`
+- [ ] Compliance Reports & Analytics page (not in current sidebar; standalone reporting still pending)
 
 ### Phase 9: Compliance Alert Integration
 - [ ] Global compliance alert overlay (blocking modal)
@@ -277,8 +301,10 @@ npm run dev
 - **Background:** #030712 (near-black)
 - **Cards:** Glass cards with backdrop-blur, border-slate-700/50
 - **Animations:** Framer Motion page transitions, counter animations
-- **Typography:** System font stack (can upgrade to Inter/Outfit)
+- **Typography:** Inter (loaded via Google Fonts) + JetBrains Mono for citations/hashes
 - **Severity Colors:** Green (pass), Amber (warn), Red (block/critical)
+- **Reusable utility classes** (in `globals.css`): `bg-aurora` (ambient drifting colour blooms), `card-lift` (hover elevation), `skeleton` (shimmer loader), `btn-gradient` / `btn-ghost`, `page-title`, `icon-chip`, `pulse-dot` (live indicator), `divider-glow`
+- **Per-section accent colors:** each nav section has its own accent (assistant=violet, monitor=amber, calendar=teal, notifications=orange, policies=pink, knowledge=cyan, audit=indigo, settings=slate)
 
 ---
 
@@ -292,6 +318,30 @@ npm run dev
 6. **RAG architecture:** Legal knowledge stored as embeddings, retrieved + cited in AI answers
 
 ---
+
+## 🏛️ ESG Governance Module (spec-aligned)
+
+Mapping of the ESG spec's Governance module → this app (`/governance`):
+
+| Spec item | Implementation |
+|---|---|
+| ESG Policy (master) | Policy cards with category + org-wide acknowledgement progress bar |
+| Policy Acknowledgement (txn) | Per-policy acknowledge action; feeds acknowledgement rate |
+| Audit (txn) | Audit list with scope, date, status (Planned/In Progress/Completed), findings count |
+| Compliance Issue (txn) | Audit, Severity (Low/Med/High/Critical), Description, **Owner, Due Date**, Status (Open/In Progress/Resolved) |
+| Compliance Issue Ownership rule (§8) | Every issue has Owner + Due Date; **overdue-while-open issues flagged red** |
+| Governance Score | Gauge = 0.5·ack-rate + 0.4·resolved-rate − 4·overdue (weighted G-pillar score) |
+
+## 🎮 Gamification / Point System (spec-aligned)
+
+Implemented at `/gamification`, persisted in `localStorage` (`ecosphere-gamify`):
+
+- **XP** — lifetime experience; drives **Level** (500 XP per level) and Leaderboard rank
+- **Points** — redeemable balance = total XP − points spent
+- **Badges** — auto-unlock when XP or completed-challenge count satisfies the Badge's Unlock Rule (e.g. Eco Warrior = 1,000 XP, Challenge Master = 10 challenges). Locked badges show their requirement
+- **Rewards** — catalog with `Points Required` + `Stock`; **Redeem** deducts points, decrements stock, persists (matches §8 Reward Redemption rule). Disabled when balance too low or out of stock
+- **Challenges** — full lifecycle badge: Draft → Active → Under Review → Completed / Archived, with Category, Difficulty, XP
+- **Leaderboard** — employees ranked by XP, current user highlighted as "You", top-3 medals
 
 ## ⚠️ Current Blockers / Notes
 

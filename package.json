@@ -2,6 +2,7 @@
   "name": "ecosphere-governance",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@11.16.0",
   "workspaces": [
     "apps/*",
     "packages/*"
