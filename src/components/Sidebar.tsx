@@ -12,10 +12,9 @@ import {
   Settings,
 } from "lucide-react";
 
-type Item = { label: string; href: string; soon?: boolean };
+type Item = { label: string; href: string };
 type Group = { title: string; icon: React.ReactNode; color: string; items: Item[] };
 
-// Live links point at built pages; `soon` items land as later vertical slices.
 const GROUPS: Group[] = [
   {
     title: "Dashboard",
@@ -38,9 +37,9 @@ const GROUPS: Group[] = [
     icon: <Users size={16} />,
     color: "text-social",
     items: [
-      { label: "CSR Activities", href: "/social/csr", soon: true },
-      { label: "Employee Participation", href: "/social/participation", soon: true },
-      { label: "Diversity Dashboard", href: "/social/diversity", soon: true },
+      { label: "CSR Activities", href: "/social/csr" },
+      { label: "Employee Participation", href: "/social/participation" },
+      { label: "Diversity Dashboard", href: "/social/diversity" },
     ],
   },
   {
@@ -48,9 +47,9 @@ const GROUPS: Group[] = [
     icon: <Landmark size={16} />,
     color: "text-gov",
     items: [
-      { label: "Policies", href: "/governance/policies", soon: true },
-      { label: "Audits", href: "/governance/audits", soon: true },
-      { label: "Compliance Issues", href: "/governance/compliance", soon: true },
+      { label: "Policies", href: "/governance/policies" },
+      { label: "Audits", href: "/governance/audits" },
+      { label: "Compliance Issues", href: "/governance/compliance" },
     ],
   },
   {
@@ -58,25 +57,27 @@ const GROUPS: Group[] = [
     icon: <Trophy size={16} />,
     color: "text-game",
     items: [
-      { label: "Challenges", href: "/gamification/challenges", soon: true },
-      { label: "Badges", href: "/gamification/badges", soon: true },
-      { label: "Rewards", href: "/gamification/rewards", soon: true },
-      { label: "Leaderboard", href: "/gamification/leaderboard", soon: true },
+      { label: "Challenges", href: "/gamification/challenges" },
+      { label: "Badges", href: "/gamification/badges" },
+      { label: "Rewards", href: "/gamification/rewards" },
+      { label: "Leaderboard", href: "/gamification/leaderboard" },
     ],
   },
   {
     title: "Reports",
     icon: <FileBarChart size={16} />,
     color: "text-muted",
-    items: [{ label: "Report Center", href: "/reports", soon: true }],
+    items: [{ label: "Report Center", href: "/reports" }],
   },
   {
     title: "Settings",
     icon: <Settings size={16} />,
     color: "text-muted",
     items: [
-      { label: "Departments", href: "/settings/departments", soon: true },
-      { label: "ESG Configuration", href: "/settings/esg", soon: true },
+      { label: "Departments", href: "/settings/departments" },
+      { label: "Categories", href: "/settings/categories" },
+      { label: "ESG Configuration", href: "/settings/esg" },
+      { label: "Notification Settings", href: "/settings/notifications" },
     ],
   },
 ];
@@ -101,19 +102,6 @@ export function Sidebar() {
             <ul className="space-y-0.5">
               {g.items.map((it) => {
                 const active = pathname === it.href;
-                if (it.soon) {
-                  return (
-                    <li
-                      key={it.href}
-                      className="flex items-center justify-between rounded-md px-3 py-1.5 pl-6 text-xs text-faint/70"
-                    >
-                      <span>{it.label}</span>
-                      <span className="rounded bg-panel2 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-faint">
-                        soon
-                      </span>
-                    </li>
-                  );
-                }
                 return (
                   <li key={it.href}>
                     <Link
