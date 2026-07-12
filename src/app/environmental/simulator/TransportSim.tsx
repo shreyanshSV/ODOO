@@ -62,7 +62,7 @@ type PlacedEvent = { id: number; def: Fault; lat: number; lng: number; radiusNm:
 type Snapshot = { progressNm: number; elapsedHours: number; fuel: number; co2T: number; costUsd: number; currentSpeed: number; downtimeLeft: number };
 const ZERO: Snapshot = { progressNm: 0, elapsedHours: 0, fuel: 0, co2T: 0, costUsd: 0, currentSpeed: 0, downtimeLeft: 0 };
 
-export function TransportSim({ profile }: { profile: SimProfile }) {
+export function TransportSim({ profile, departments }: { profile: SimProfile; departments: { id: string; name: string }[] }) {
   const [startCode, setStartCode] = useState("IN");
   const [destCode, setDestCode] = useState("US");
   const [customWaypoints, setCustomWaypoints] = useState<Pt[]>([]);
@@ -491,7 +491,16 @@ export function TransportSim({ profile }: { profile: SimProfile }) {
               <input type="hidden" name="co2Kg" value={Math.round(display.co2T * 1000)} />
               <input type="hidden" name="fuelT" value={Math.round(display.fuel)} />
               <input type="hidden" name="reference" value={`${profile.label} ${endpoints.start}→${endpoints.dest}`} />
-              <button className="btn-primary w-full">Log this trip → Carbon Transactions</button>
+              <div className="mb-2">
+                <label className="label">Department (links to goals)</label>
+                <select name="departmentId" className="input">
+                  <option value="">— All goals —</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <button className="btn-primary w-full">Log this trip → Carbon Transactions &amp; Goals</button>
             </form>
           )}
         </div>

@@ -10,7 +10,7 @@ const MODES = [
   { id: "ground", label: "Ground", emoji: "🚛" },
 ];
 
-export function SimSwitcher() {
+export function SimSwitcher({ departments }: { departments: { id: string; name: string }[] }) {
   const [mode, setMode] = useState("ship");
   return (
     <div>
@@ -26,7 +26,7 @@ export function SimSwitcher() {
         ))}
       </div>
       {/* key forces a clean remount (fresh map/state) when switching modes */}
-      <TransportSim key={mode} profile={PROFILES[mode]} />
+      <TransportSim key={mode} profile={PROFILES[mode]} departments={departments} />
     </div>
   );
 }

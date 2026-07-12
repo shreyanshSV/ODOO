@@ -1,11 +1,17 @@
 import { PageHeader, ModuleTabs } from "@/components/ui";
 import { SubNav } from "@/components/SubNav";
 import { ENV_TABS } from "@/lib/nav";
+import { prisma } from "@/lib/prisma";
 import { SimSwitcher } from "./SimSwitcher";
 
 export const dynamic = "force-dynamic";
 
-export default function SimulatorPage() {
+export default async function SimulatorPage() {
+  const departments = await prisma.department.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
   return (
     <div className="p-6">
       <PageHeader
@@ -15,7 +21,7 @@ export default function SimulatorPage() {
       />
       <ModuleTabs active="Environmental" />
       <SubNav items={ENV_TABS} />
-      <SimSwitcher />
+      <SimSwitcher departments={departments} />
     </div>
   );
 }
