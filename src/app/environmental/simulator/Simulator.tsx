@@ -104,6 +104,7 @@ export function Simulator() {
   const [destCode, setDestCode] = useState("US");
   const [customWaypoints, setCustomWaypoints] = useState<Pt[]>([]);
   const [drawMode, setDrawMode] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
 
   const [speedKn, setSpeedKn] = useState(20);
   const [multiplier, setMultiplier] = useState(1);
@@ -442,6 +443,36 @@ export function Simulator() {
     pushLog(`${def.icon} ${def.label} dropped — drag it onto the ship's path`);
   };
 
+  // Best-efficient sea route (avoids land, follows shipping lanes) via searoute-js.
+  const autoRoute = async () => {
+    const s = portByCode(startCode);
+    const d = portByCode(destCode);
+    if (!s || !d || runningRef.current) return;
+    setAutoLoading(true);
+    try {
+      const res = await fetch(`/api/searoute?fromLat=${s.lat}&fromLng=${s.lng}&toLat=${d.lat}&toLng=${d.lng}`);
+      const data = await res.json();
+      if (Array.isArray(data.waypoints) && data.waypoints.length >= 2) {
+        setCustomWaypoints(data.waypoints.slice(1, -1));
+        setDrawMode(false);
+        pushLog(`🧭 Auto sea route — ${fmtNum(data.lengthNm)} nm via ${data.count} waypoints`);
+      } else {
+        pushLog("🧭 No sea route found for this pair");
+      }
+    } catch {
+      pushLog("🧭 Sea route lookup failed");
+    } finally {
+      setAutoLoading(false);
+    }
+  };
+
+  // Auto-compute the sea route whenever a custom country pair is chosen.
+  useEffect(() => {
+    if (mode !== "custom" || runningRef.current) return;
+    autoRoute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, startCode, destCode]);
+
   const fraction = totalNm > 0 ? display.progressNm / totalNm : 0;
   const days = display.elapsedHours / 24;
 
@@ -510,6 +541,9 @@ export function Simulator() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <button onClick={autoRoute} disabled={running || autoLoading} className="rounded-lg bg-overall px-3 py-1.5 text-sm font-medium text-bg disabled:opacity-50">
+                  {autoLoading ? "🧭 Routing…" : "🧭 Auto sea route"}
+                </button>
                 <button onClick={() => setDrawMode((d) => !d)} disabled={running} className={`rounded-lg px-3 py-1.5 text-sm ${drawMode ? "bg-social text-bg" : "btn-ghost"}`}>
                   {drawMode ? "✏️ Drawing… click the sea" : "✏️ Draw path"}
                 </button>
