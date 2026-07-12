@@ -6,7 +6,10 @@ import { notify } from "@/lib/notify";
 import { awardBadges } from "@/lib/badges";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
-const num = (fd: FormData, k: string) => Number(fd.get(k) ?? 0);
+// Clamped, whole-number field — never overflows Postgres INT4 (max ~2.1B).
+const INT_MAX = 2_147_483_647;
+const intField = (fd: FormData, k: string, max = INT_MAX) =>
+  Math.max(0, Math.min(Math.round(Number(fd.get(k) ?? 0) || 0), max));
 
 /* ---------- CSR Activities ---------- */
 
@@ -21,7 +24,7 @@ export async function createCsr(fd: FormData) {
       categoryId: categoryId || null,
       departmentId: departmentId || null,
       description: str(fd, "description") || null,
-      points: num(fd, "points"),
+      points: intField(fd, "points", 100_000),
     },
   });
   revalidatePath("/social/csr");
