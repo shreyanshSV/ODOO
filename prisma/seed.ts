@@ -1,4 +1,5 @@
 import { PrismaClient, type EmissionSource } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -16,10 +17,23 @@ async function main() {
     "ChallengeParticipation","EmployeeParticipation","ComplianceIssue","Audit",
     "CarbonTransaction","EnvironmentalGoal","CSRActivity","Challenge",
     "ProductESGProfile","Product","DepartmentScore","Reward","Badge","ESGPolicy",
-    "EmissionFactor","Category","Employee","Department","EsgConfig"
+    "EmissionFactor","Category","User","Employee","Department","Company","EsgConfig"
     RESTART IDENTITY CASCADE;`);
 
   await prisma.esgConfig.create({ data: { id: "default" } });
+
+  // --- Company (tenant) ---
+  const company = await prisma.company.create({
+    data: {
+      name: "EcoSphere Demo Corp",
+      slug: "ecosphere",
+      domain: "ecosphere.io",
+      website: "https://ecosphere.io",
+      industry: "Manufacturing",
+      headquarters: "Mumbai, India",
+      description: "A demo manufacturing enterprise using EcoSphere to run its ESG program.",
+    },
+  });
 
   // --- Departments ---
   const deptData = [
@@ -30,7 +44,7 @@ async function main() {
     { name: "R&D", code: "RND", employeeCount: 63 },
   ];
   const depts = [];
-  for (const d of deptData) depts.push(await prisma.department.create({ data: d }));
+  for (const d of deptData) depts.push(await prisma.department.create({ data: { ...d, companyId: company.id } }));
   const byCode = Object.fromEntries(depts.map((d) => [d.code, d]));
 
   // --- Employees ---
@@ -55,6 +69,7 @@ async function main() {
           email: name.toLowerCase().replace(/[^a-z]/g, ".") + "@ecosphere.io",
           gender,
           departmentId: byCode[code].id,
+          companyId: company.id,
           xp: 200 + Math.floor(Math.random() * 4000),
           points: 100 + Math.floor(Math.random() * 3000),
         },
@@ -64,6 +79,17 @@ async function main() {
   // assign a head to each department
   for (let i = 0; i < depts.length; i++)
     await prisma.department.update({ where: { id: depts[i].id }, data: { headId: employees[i].id } });
+
+  // --- Users (auth accounts, all password: "password") ---
+  const hash = await bcrypt.hash("password", 10);
+  await prisma.user.createMany({
+    data: [
+      { email: "superadmin@ecosphere.io", passwordHash: hash, name: "Super Admin", role: "SUPER_ADMIN" },
+      { email: "admin@ecosphere.io", passwordHash: hash, name: "Company Admin", role: "COMPANY_ADMIN", companyId: company.id },
+      { email: "manager@ecosphere.io", passwordHash: hash, name: employees[4].name, role: "MANAGER", companyId: company.id, employeeId: employees[4].id },
+      { email: "priya@ecosphere.io", passwordHash: hash, name: employees[0].name, role: "EMPLOYEE", companyId: company.id, employeeId: employees[0].id },
+    ],
+  });
 
   // --- Categories ---
   await prisma.category.createMany({

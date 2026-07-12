@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Leaf,
@@ -10,7 +11,9 @@ import {
   Trophy,
   FileBarChart,
   Settings,
+  LogOut,
 } from "lucide-react";
+import { titleCase } from "@/lib/format";
 
 type Item = { label: string; href: string };
 type Group = { title: string; icon: React.ReactNode; color: string; items: Item[] };
@@ -83,7 +86,9 @@ const GROUPS: Group[] = [
   },
 ];
 
-export function Sidebar() {
+type SidebarUser = { name: string; email: string; role: string };
+
+export function Sidebar({ user }: { user?: SidebarUser }) {
   const pathname = usePathname();
 
   return (
@@ -120,6 +125,19 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {user && (
+        <div className="mt-6 border-t border-border pt-3">
+          <div className="truncate px-2 text-sm font-medium text-ink">{user.name}</div>
+          <div className="px-2 text-[11px] text-faint">{titleCase(user.role)}</div>
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted transition-colors hover:text-danger"
+          >
+            <LogOut size={14} /> Sign out
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

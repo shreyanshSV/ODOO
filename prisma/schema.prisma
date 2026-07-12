@@ -93,6 +93,45 @@ enum NotificationChannel {
   EMAIL
 }
 
+enum Role {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+// ---------- Tenancy & auth ----------
+
+model Company {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  domain       String?
+  website      String?
+  logoUrl      String?
+  industry     String?
+  headquarters String?
+  description  String?
+  createdAt    DateTime @default(now())
+
+  users       User[]
+  departments Department[]
+  employees   Employee[]
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(EMPLOYEE)
+  companyId    String?
+  company      Company?  @relation(fields: [companyId], references: [id])
+  employeeId   String?   @unique
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
 // ---------- Master data ----------
 
 model Department {
@@ -106,6 +145,8 @@ model Department {
   children      Department[] @relation("DeptTree")
   employeeCount Int      @default(0)
   status        ActiveStatus @default(ACTIVE)
+  companyId     String?
+  company       Company? @relation(fields: [companyId], references: [id])
 
   employees          Employee[]           @relation("DeptEmployees")
   emissionGoals      EnvironmentalGoal[]
@@ -128,6 +169,9 @@ model Employee {
   gender       String?      // diversity metrics
   xp           Int     @default(0)
   points       Int     @default(0)
+  companyId    String?
+  company      Company? @relation(fields: [companyId], references: [id])
+  user         User?
 
   headOf                 Department[]            @relation("DeptHead")
   participations         EmployeeParticipation[]
