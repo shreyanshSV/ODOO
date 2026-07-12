@@ -3,45 +3,18 @@
 import "leaflet/dist/leaflet.css";
 import type * as LeafletNS from "leaflet";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ROUTES,
-  SHIP,
-  EVENT_TYPES,
-  positionAt,
-  routeDistanceNm,
-  fuelTPerHour,
-  haversineNm,
-  type Pt,
-  type EventType,
-} from "@/lib/voyage";
+import { positionAt, routeDistanceNm, haversineNm, type Pt } from "@/lib/voyage";
+import { greatCircle } from "@/lib/greatcircle";
 import { COUNTRIES, portByCode } from "@/lib/ports";
 import { fmtNum } from "@/lib/format";
 import { logVoyageEmission } from "../actions";
+import type { SimProfile, Fault } from "@/lib/sim/types";
 
 type L = typeof LeafletNS;
 
-// ---------- constants ----------
 const TICK_MS = 100;
 const SIM_HOURS_PER_REAL_SEC = 8;
-const AUX_FUEL_T_PER_DAY = 2;
-const REROUTE_DELAY_H = 48;
-const ONE_OFF = new Set(["ENGINE_FAILURE", "FREIGHT_LOSS", "PIRACY_REROUTE"]);
-const RADIUS_BY_TYPE: Record<string, number> = {
-  STORM: 220,
-  FOULING: 260,
-  ENGINE_FAILURE: 130,
-  FREIGHT_LOSS: 130,
-  PIRACY_REROUTE: 180,
-};
-const COLOR_BY_TYPE: Record<string, string> = {
-  STORM: "#56a2e8",
-  ENGINE_FAILURE: "#f17634",
-  FREIGHT_LOSS: "#b86200",
-  PIRACY_REROUTE: "#ff8383",
-  FOULING: "#6e757c",
-};
 
-// ---------- helpers ----------
 function traversed(waypoints: Pt[], nm: number): Pt[] {
   const out: Pt[] = [waypoints[0]];
   let travelled = 0;
@@ -62,51 +35,41 @@ function fmtUsd(n: number): string {
   if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}k`;
   return `$${Math.round(n)}`;
 }
-function baselineFor(totalNm: number, speedKn: number) {
+function baselineFor(totalNm: number, speedKn: number, p: SimProfile) {
   const hours = totalNm / speedKn;
-  const fuelT = fuelTPerHour(speedKn) * hours;
+  const fuel = p.fuelPerHour(speedKn) * hours;
   const days = hours / 24;
-  return { days, fuelT, co2T: fuelT * SHIP.co2PerTonneFuel, costUsd: fuelT * SHIP.fuelUsdPerTonne + SHIP.charterUsdPerDay * days };
+  return { days, fuel, co2T: fuel * p.co2PerFuel, costUsd: fuel * p.fuelPrice + p.charterPerDay * days };
 }
-function worstFor(totalNm: number) {
-  const sog = SHIP.cruiseKn * 0.6; // heavy-weather speed over ground
+function worstFor(totalNm: number, p: SimProfile) {
+  const sog = p.cruiseKn * 0.6;
   const sailH = totalNm / sog;
-  const sailFuel = fuelTPerHour(SHIP.cruiseKn, 1.8) * sailH; // full power + weather penalty
-  const downH = 120;
-  const downFuel = (AUX_FUEL_T_PER_DAY * downH) / 24;
+  const sailFuel = p.fuelPerHour(p.cruiseKn, 1.8) * sailH;
+  const downH = p.worstDowntimeHours;
+  const downFuel = (p.auxFuelPerDay * downH) / 24;
   const days = (sailH + downH) / 24;
-  const fuelT = sailFuel + downFuel;
-  const cargoLoss = SHIP.cargoValueUsd * 0.2;
+  const fuel = sailFuel + downFuel;
+  const cargoLoss = p.cargoValue * 0.2;
   return {
     days,
-    fuelT,
-    co2T: fuelT * SHIP.co2PerTonneFuel,
-    costUsd: fuelT * SHIP.fuelUsdPerTonne + SHIP.charterUsdPerDay * days + 800_000 + cargoLoss,
+    fuel,
+    co2T: fuel * p.co2PerFuel,
+    costUsd: fuel * p.fuelPrice + p.charterPerDay * days + p.worstExtraCostUsd + cargoLoss,
   };
 }
 
-type PlacedEvent = { id: number; type: string; def: EventType; lat: number; lng: number; radiusNm: number };
-type Snapshot = {
-  progressNm: number;
-  elapsedHours: number;
-  fuelT: number;
-  co2T: number;
-  costUsd: number;
-  currentSpeed: number;
-  downtimeLeft: number;
-};
-const ZERO: Snapshot = { progressNm: 0, elapsedHours: 0, fuelT: 0, co2T: 0, costUsd: 0, currentSpeed: 0, downtimeLeft: 0 };
+type PlacedEvent = { id: number; def: Fault; lat: number; lng: number; radiusNm: number };
+type Snapshot = { progressNm: number; elapsedHours: number; fuel: number; co2T: number; costUsd: number; currentSpeed: number; downtimeLeft: number };
+const ZERO: Snapshot = { progressNm: 0, elapsedHours: 0, fuel: 0, co2T: 0, costUsd: 0, currentSpeed: 0, downtimeLeft: 0 };
 
-export function Simulator() {
-  const [mode, setMode] = useState<"preset" | "custom">("preset");
-  const [presetKey, setPresetKey] = useState<"suez" | "cape">("suez");
+export function TransportSim({ profile }: { profile: SimProfile }) {
   const [startCode, setStartCode] = useState("IN");
   const [destCode, setDestCode] = useState("US");
   const [customWaypoints, setCustomWaypoints] = useState<Pt[]>([]);
   const [drawMode, setDrawMode] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
 
-  const [speedKn, setSpeedKn] = useState(20);
+  const [speedKn, setSpeedKn] = useState(profile.cruiseKn);
   const [multiplier, setMultiplier] = useState(1);
   const [running, setRunning] = useState(false);
   const [events, setEvents] = useState<PlacedEvent[]>([]);
@@ -117,25 +80,21 @@ export function Simulator() {
   const [ready, setReady] = useState(false);
 
   const waypoints = useMemo<Pt[]>(() => {
-    if (mode === "preset") return ROUTES[presetKey].waypoints;
     const s = portByCode(startCode);
     const d = portByCode(destCode);
     if (!s || !d) return [];
     return [[s.lat, s.lng], ...customWaypoints, [d.lat, d.lng]];
-  }, [mode, presetKey, startCode, destCode, customWaypoints]);
+  }, [startCode, destCode, customWaypoints]);
 
   const totalNm = useMemo(() => (waypoints.length >= 2 ? routeDistanceNm(waypoints) : 0), [waypoints]);
-  const baseline = useMemo(() => baselineFor(totalNm || 1, speedKn), [totalNm, speedKn]);
-  const worst = useMemo(() => worstFor(totalNm || 1), [totalNm]);
-
+  const baseline = useMemo(() => baselineFor(totalNm || 1, speedKn, profile), [totalNm, speedKn, profile]);
+  const worst = useMemo(() => worstFor(totalNm || 1, profile), [totalNm, profile]);
   const endpoints = useMemo(() => {
-    if (mode === "preset") return { start: "Mumbai (India)", dest: "New York (USA)" };
     const s = portByCode(startCode);
     const d = portByCode(destCode);
-    return { start: s ? `${s.port} (${s.name})` : "—", dest: d ? `${d.port} (${d.name})` : "—" };
-  }, [mode, startCode, destCode]);
+    return { start: s ? `${s.name} (${s.port})` : "—", dest: d ? `${d.name} (${d.port})` : "—" };
+  }, [startCode, destCode]);
 
-  // ----- refs -----
   const containerRef = useRef<HTMLDivElement | null>(null);
   const Lref = useRef<L | null>(null);
   const mapRef = useRef<LeafletNS.Map | null>(null);
@@ -153,7 +112,6 @@ export function Simulator() {
   const inputsRef = useRef({ waypoints, totalNm, speedKn, multiplier, events });
   const runningRef = useRef(false);
   const completedRef = useRef(false);
-  const modeRef = useRef(mode);
   const drawModeRef = useRef(drawMode);
   const idRef = useRef(1);
   const refreshFlightsRef = useRef<() => void>(() => {});
@@ -166,16 +124,12 @@ export function Simulator() {
     inputsRef.current = { waypoints, totalNm, speedKn, multiplier, events };
   }, [waypoints, totalNm, speedKn, multiplier, events]);
   useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
-  useEffect(() => {
     drawModeRef.current = drawMode;
   }, [drawMode]);
 
   const emoji = (html: string, size = 20) =>
     Lref.current!.divIcon({ html: `<div style="font-size:${size}px;line-height:${size}px">${html}</div>`, className: "", iconSize: [size + 2, size + 2], iconAnchor: [(size + 2) / 2, (size + 2) / 2] });
 
-  // ----- mount: map + animation loop -----
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
     let cancelled = false;
@@ -186,13 +140,9 @@ export function Simulator() {
       if (cancelled || !containerRef.current) return;
       Lref.current = Lmod;
 
-      const map = Lmod.map(containerRef.current, { center: [25, -20], zoom: 3, worldCopyJump: true, minZoom: 2 });
+      const map = Lmod.map(containerRef.current, { center: [25, 20], zoom: 3, worldCopyJump: true, minZoom: 2 });
       mapRef.current = map;
-      Lmod.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: "&copy; OpenStreetMap &copy; CARTO",
-        subdomains: "abcd",
-        maxZoom: 19,
-      }).addTo(map);
+      Lmod.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { attribution: "&copy; OpenStreetMap &copy; CARTO", subdomains: "abcd", maxZoom: 19 }).addTo(map);
 
       routeLineRef.current = Lmod.polyline([], { color: "#33383d", weight: 2, dashArray: "4 6" }).addTo(map);
       coveredRef.current = Lmod.polyline([], { color: "#39994b", weight: 3 }).addTo(map);
@@ -200,14 +150,12 @@ export function Simulator() {
       eventLayerRef.current = Lmod.layerGroup().addTo(map);
       flightLayerRef.current = Lmod.layerGroup().addTo(map);
       vesselLayerRef.current = Lmod.layerGroup().addTo(map);
-
       startMarkerRef.current = Lmod.marker([0, 0], { icon: emoji("🟢", 16) }).addTo(map);
       destMarkerRef.current = Lmod.marker([0, 0], { icon: emoji("🏁", 16) }).addTo(map);
-      shipRef.current = Lmod.marker([0, 0], { icon: emoji("🚢") }).addTo(map).bindTooltip("Cargo ship");
+      shipRef.current = Lmod.marker([0, 0], { icon: emoji(profile.emoji) }).addTo(map).bindTooltip(profile.vehicle);
 
-      // click on the sea to draw a custom path
       map.on("click", (e: LeafletNS.LeafletMouseEvent) => {
-        if (modeRef.current !== "custom" || !drawModeRef.current || runningRef.current) return;
+        if (!drawModeRef.current || runningRef.current) return;
         setCustomWaypoints((prev) => [...prev, [e.latlng.lat, e.latlng.lng]]);
       });
 
@@ -217,80 +165,61 @@ export function Simulator() {
         if (inp.totalNm <= 0) return;
         const s = simRef.current;
         const dtH = SIM_HOURS_PER_REAL_SEC * inp.multiplier * (TICK_MS / 1000);
-
         const shipPos = positionAt(inp.waypoints, s.progressNm);
 
-        // faults by proximity to the ship's current position
         let speedFactor = 1;
         let fuelFactor = 1;
         for (const ev of inp.events) {
           if (haversineNm([ev.lat, ev.lng], shipPos) > ev.radiusNm) continue;
-          if (ONE_OFF.has(ev.type)) {
+          if (ev.def.kind === "oneoff") {
             if (!s.triggered.has(ev.id)) {
               s.triggered.add(ev.id);
-              if (ev.type === "ENGINE_FAILURE") {
-                s.downtimeLeft += ev.def.effect.downtimeHours;
-                s.costUsd += ev.def.effect.extraCostUsd;
-                pushLog(`⚙️ Engine failure — ${Math.round(ev.def.effect.downtimeHours / 24)}d adrift, +${fmtUsd(ev.def.effect.extraCostUsd)}`);
-              } else if (ev.type === "FREIGHT_LOSS") {
-                const loss = ev.def.effect.cargoLossFrac * SHIP.cargoValueUsd;
-                s.costUsd += loss;
-                pushLog(`📦 Freight lost — ${fmtUsd(loss)} cargo written off`);
-              } else if (ev.type === "PIRACY_REROUTE") {
-                s.downtimeLeft += REROUTE_DELAY_H;
-                s.costUsd += ev.def.effect.extraCostUsd;
-                pushLog(`🏴‍☠️ Piracy — convoy/reroute delay, +${fmtUsd(ev.def.effect.extraCostUsd)}`);
-              }
+              s.downtimeLeft += ev.def.downtimeHours;
+              s.costUsd += ev.def.extraCostUsd + ev.def.cargoLossFrac * profile.cargoValue;
+              const bits = [
+                ev.def.downtimeHours ? `${Math.round(ev.def.downtimeHours)}h delay` : "",
+                ev.def.extraCostUsd ? `+${fmtUsd(ev.def.extraCostUsd)}` : "",
+                ev.def.cargoLossFrac ? `${fmtUsd(ev.def.cargoLossFrac * profile.cargoValue)} cargo lost` : "",
+              ].filter(Boolean);
+              pushLog(`${ev.def.icon} ${ev.def.label} — ${bits.join(", ")}`);
             }
           } else {
-            speedFactor *= ev.def.effect.speedFactor;
-            fuelFactor *= ev.def.effect.fuelFactor;
+            speedFactor *= ev.def.speedFactor;
+            fuelFactor *= ev.def.fuelFactor;
           }
         }
 
-        const charterPerHour = SHIP.charterUsdPerDay / 24;
+        const charterPerHour = profile.charterPerDay / 24;
         if (s.downtimeLeft > 0) {
-          const fuel = (AUX_FUEL_T_PER_DAY / 24) * dtH;
-          s.fuelT += fuel;
-          s.co2T += fuel * SHIP.co2PerTonneFuel;
-          s.costUsd += fuel * SHIP.fuelUsdPerTonne + charterPerHour * dtH;
+          const fuel = (profile.auxFuelPerDay / 24) * dtH;
+          s.fuel += fuel;
+          s.co2T += fuel * profile.co2PerFuel;
+          s.costUsd += fuel * profile.fuelPrice + charterPerHour * dtH;
           s.elapsedHours += dtH;
           s.downtimeLeft = Math.max(0, s.downtimeLeft - dtH);
           s.currentSpeed = 0;
         } else {
-          const spd = inp.speedKn * speedFactor; // speed over ground — weather slows progress
+          const spd = inp.speedKn * speedFactor;
           let dist = spd * dtH;
           if (s.progressNm + dist > inp.totalNm) dist = inp.totalNm - s.progressNm;
           s.progressNm += dist;
-          // Engine power tracks the COMMANDED cruise speed; a fault adds an
-          // inefficiency penalty on top. So a storm burns more fuel per mile even
-          // as it slows the ship (slower ship => more hours in the storm => more CO2).
-          const fuel = fuelTPerHour(inp.speedKn, fuelFactor) * dtH;
-          s.fuelT += fuel;
-          s.co2T += fuel * SHIP.co2PerTonneFuel;
-          s.costUsd += fuel * SHIP.fuelUsdPerTonne + charterPerHour * dtH;
+          const fuel = profile.fuelPerHour(inp.speedKn, fuelFactor) * dtH; // power at commanded speed × fault penalty
+          s.fuel += fuel;
+          s.co2T += fuel * profile.co2PerFuel;
+          s.costUsd += fuel * profile.fuelPrice + charterPerHour * dtH;
           s.elapsedHours += dtH;
           s.currentSpeed = spd;
         }
 
         shipRef.current?.setLatLng(positionAt(inp.waypoints, s.progressNm));
         coveredRef.current?.setLatLngs(traversed(inp.waypoints, s.progressNm) as [number, number][]);
-
         if (s.progressNm >= inp.totalNm && !completedRef.current) {
           completedRef.current = true;
           runningRef.current = false;
           setRunning(false);
-          pushLog("🏁 Voyage complete — arrived at destination");
+          pushLog("🏁 Arrived at destination");
         }
-        setDisplay({
-          progressNm: s.progressNm,
-          elapsedHours: s.elapsedHours,
-          fuelT: s.fuelT,
-          co2T: s.co2T,
-          costUsd: s.costUsd,
-          currentSpeed: s.currentSpeed,
-          downtimeLeft: s.downtimeLeft,
-        });
+        setDisplay({ progressNm: s.progressNm, elapsedHours: s.elapsedHours, fuel: s.fuel, co2T: s.co2T, costUsd: s.costUsd, currentSpeed: s.currentSpeed, downtimeLeft: s.downtimeLeft });
       };
 
       resetRef.current = () => {
@@ -306,20 +235,19 @@ export function Simulator() {
 
       const addPlane = (a: { callsign: string; lat: number; lon: number; track: number; altFt: number; speedKn: number }) => {
         const icon = Lmod.divIcon({ html: `<div style="font-size:16px;transform:rotate(${a.track}deg)">✈️</div>`, className: "", iconSize: [18, 18], iconAnchor: [9, 9] });
-        Lmod.marker([a.lat, a.lon], { icon }).addTo(flightLayerRef.current!).bindTooltip(`${a.callsign} · ${Math.round(a.altFt)} ft · ${Math.round(a.speedKn)} kn`);
+        Lmod.marker([a.lat, a.lon], { icon }).addTo(flightLayerRef.current!).bindTooltip(`${a.callsign} · ${Math.round(a.altFt)} ft`);
       };
       const addVessel = (v: { name: string; lat: number; lon: number; type: string; speedKn: number }) => {
-        Lmod.marker([v.lat, v.lon], { icon: emoji(v.type === "Tanker" ? "🛢️" : "🚢", 15) }).addTo(vesselLayerRef.current!).bindTooltip(`${v.name} · ${v.type} · ${Math.round(v.speedKn)} kn`);
+        Lmod.marker([v.lat, v.lon], { icon: emoji(v.type === "Tanker" ? "🛢️" : "🚢", 15) }).addTo(vesselLayerRef.current!).bindTooltip(`${v.name} · ${v.type}`);
       };
       refreshFlightsRef.current = async () => {
         try {
           const wps = inputsRef.current.waypoints;
-          const c = wps.length ? positionAt(wps, simRef.current.progressNm) : [25, -20];
+          const c = wps.length ? positionAt(wps, simRef.current.progressNm) : [25, 20];
           const res = await fetch(`/api/flights?lat=${c[0].toFixed(2)}&lon=${c[1].toFixed(2)}&dist=250`);
           const data = await res.json();
           flightLayerRef.current?.clearLayers();
           for (const a of data.aircraft ?? []) addPlane(a);
-          if ((data.aircraft ?? []).length) pushLog(`✈️ ${data.aircraft.length} live aircraft near the ship (${data.source})`);
         } catch {
           /* ignore */
         }
@@ -327,7 +255,7 @@ export function Simulator() {
       refreshVesselsRef.current = async () => {
         try {
           const wps = inputsRef.current.waypoints;
-          const c = wps.length ? positionAt(wps, simRef.current.progressNm) : [25, -20];
+          const c = wps.length ? positionAt(wps, simRef.current.progressNm) : [25, 20];
           const res = await fetch(`/api/vessels?lat=${c[0].toFixed(2)}&lon=${c[1].toFixed(2)}&dist=300`);
           const data = await res.json();
           vesselLayerRef.current?.clearLayers();
@@ -350,7 +278,7 @@ export function Simulator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // redraw route + waypoint dots + endpoints when the geometry changes
+  // redraw route + waypoint dots when geometry changes
   useEffect(() => {
     const L = Lref.current;
     if (!ready || !L || !mapRef.current || !routeLineRef.current) return;
@@ -359,37 +287,30 @@ export function Simulator() {
       startMarkerRef.current?.setLatLng(waypoints[0]).bindTooltip(endpoints.start);
       destMarkerRef.current?.setLatLng(waypoints[waypoints.length - 1]).bindTooltip(endpoints.dest);
     }
-    // draggable custom waypoint dots
     wpLayerRef.current?.clearLayers();
-    if (mode === "custom") {
-      customWaypoints.forEach((p, i) => {
-        const dot = L.marker(p, {
-          draggable: true,
-          icon: L.divIcon({ html: `<div style="width:12px;height:12px;border-radius:50%;background:#39994b;border:2px solid #0b0b0b;box-shadow:0 0 4px #39994b"></div>`, className: "", iconSize: [12, 12], iconAnchor: [6, 6] }),
-        }).addTo(wpLayerRef.current!);
-        dot.on("dragend", () => {
-          const ll = dot.getLatLng();
-          setCustomWaypoints((prev) => prev.map((q, j) => (j === i ? [ll.lat, ll.lng] : q)));
-        });
-        dot.on("dblclick", () => setCustomWaypoints((prev) => prev.filter((_, j) => j !== i)));
+    customWaypoints.forEach((p, i) => {
+      const dot = L.marker(p, { draggable: true, icon: L.divIcon({ html: `<div style="width:12px;height:12px;border-radius:50%;background:#39994b;border:2px solid #0b0b0b;box-shadow:0 0 4px #39994b"></div>`, className: "", iconSize: [12, 12], iconAnchor: [6, 6] }) }).addTo(wpLayerRef.current!);
+      dot.on("dragend", () => {
+        const ll = dot.getLatLng();
+        setCustomWaypoints((prev) => prev.map((q, j) => (j === i ? [ll.lat, ll.lng] : q)));
       });
-    }
+      dot.on("dblclick", () => setCustomWaypoints((prev) => prev.filter((_, j) => j !== i)));
+    });
     if (!runningRef.current) {
       resetRef.current();
       if (waypoints.length >= 2) mapRef.current.fitBounds(routeLineRef.current.getBounds().pad(0.15));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waypoints, mode, ready]);
+  }, [waypoints, ready]);
 
-  // draggable fault zones (marker + radius circle)
+  // draggable fault zones
   useEffect(() => {
     const L = Lref.current;
     if (!ready || !L || !eventLayerRef.current) return;
     const layer = eventLayerRef.current;
     layer.clearLayers();
     for (const ev of events) {
-      const color = COLOR_BY_TYPE[ev.type] ?? "#6e757c";
-      const circle = L.circle([ev.lat, ev.lng], { radius: ev.radiusNm * 1852, color, weight: 1, fillColor: color, fillOpacity: 0.12 }).addTo(layer);
+      const circle = L.circle([ev.lat, ev.lng], { radius: ev.radiusNm * 1852, color: ev.def.color, weight: 1, fillColor: ev.def.color, fillOpacity: 0.12 }).addTo(layer);
       const marker = L.marker([ev.lat, ev.lng], { draggable: true, icon: emoji(ev.def.icon) }).addTo(layer).bindTooltip(`${ev.def.label} — drag me, double-click to remove`);
       marker.on("drag", () => circle.setLatLng(marker.getLatLng()));
       marker.on("dragend", () => {
@@ -401,9 +322,8 @@ export function Simulator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events, ready]);
 
-  // live overlays
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !profile.liveFlights) return;
     if (!showFlights) {
       flightLayerRef.current?.clearLayers();
       return;
@@ -411,9 +331,9 @@ export function Simulator() {
     refreshFlightsRef.current();
     const id = setInterval(() => refreshFlightsRef.current(), 20000);
     return () => clearInterval(id);
-  }, [showFlights, ready]);
+  }, [showFlights, ready, profile.liveFlights]);
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !profile.liveVessels) return;
     if (!showVessels) {
       vesselLayerRef.current?.clearLayers();
       return;
@@ -421,9 +341,8 @@ export function Simulator() {
     refreshVesselsRef.current();
     const id = setInterval(() => refreshVesselsRef.current(), 20000);
     return () => clearInterval(id);
-  }, [showVessels, ready]);
+  }, [showVessels, ready, profile.liveVessels]);
 
-  // ----- actions -----
   const canSail = totalNm > 0;
   const play = () => {
     if (!canSail) return;
@@ -438,140 +357,122 @@ export function Simulator() {
   };
   const dropFault = (type: string) => {
     if (!mapRef.current) return;
-    const def = EVENT_TYPES.find((e) => e.type === type);
+    const def = profile.faults.find((f) => f.type === type);
     if (!def) return;
     const c = mapRef.current.getCenter();
     const id = idRef.current++;
-    setEvents((prev) => [...prev, { id, type, def, lat: c.lat, lng: c.lng, radiusNm: RADIUS_BY_TYPE[type] ?? 180 }]);
-    pushLog(`${def.icon} ${def.label} dropped — drag it onto the ship's path`);
+    setEvents((prev) => [...prev, { id, def, lat: c.lat, lng: c.lng, radiusNm: def.radiusNm }]);
+    pushLog(`${def.icon} ${def.label} dropped — drag it onto the path`);
   };
 
-  // Best-efficient sea route (avoids land, follows shipping lanes) via searoute-js.
   const autoRoute = async () => {
     const s = portByCode(startCode);
     const d = portByCode(destCode);
     if (!s || !d || runningRef.current) return;
     setAutoLoading(true);
     try {
-      const res = await fetch(`/api/searoute?fromLat=${s.lat}&fromLng=${s.lng}&toLat=${d.lat}&toLng=${d.lng}`);
-      const data = await res.json();
-      if (Array.isArray(data.waypoints) && data.waypoints.length >= 2) {
-        setCustomWaypoints(data.waypoints.slice(1, -1));
-        setDrawMode(false);
-        pushLog(`🧭 Auto sea route — ${fmtNum(data.lengthNm)} nm via ${data.count} waypoints`);
+      let pts: Pt[] = [];
+      if (profile.routing === "air") {
+        pts = greatCircle([s.lat, s.lng], [d.lat, d.lng], 48);
+        pushLog("🧭 Great-circle air route");
       } else {
-        pushLog("🧭 No sea route found for this pair");
+        const path = profile.routing === "sea" ? "/api/searoute" : "/api/roadroute";
+        const res = await fetch(`${path}?fromLat=${s.lat}&fromLng=${s.lng}&toLat=${d.lat}&toLng=${d.lng}`);
+        const data = await res.json();
+        if (Array.isArray(data.waypoints) && data.waypoints.length >= 2) {
+          pts = data.waypoints;
+          pushLog(`🧭 Auto ${profile.routing === "sea" ? "sea" : "road"} route — ${fmtNum((data.lengthNm ?? data.km ?? 0))} ${profile.routing === "sea" ? "nm" : "km"}`);
+        } else {
+          pushLog(`🧭 No ${profile.routing} route for this pair — try Draw path`);
+        }
       }
+      setCustomWaypoints(pts.length >= 2 ? pts.slice(1, -1) : []);
+      setDrawMode(false);
     } catch {
-      pushLog("🧭 Sea route lookup failed");
+      pushLog("🧭 Route lookup failed");
     } finally {
       setAutoLoading(false);
     }
   };
 
-  // Auto-compute the sea route whenever a custom country pair is chosen.
+  // auto-compute a route whenever the endpoints (or mode) change
   useEffect(() => {
-    if (mode !== "custom" || runningRef.current) return;
+    if (runningRef.current) return;
     autoRoute();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, startCode, destCode]);
+  }, [startCode, destCode, ready]);
 
   const fraction = totalNm > 0 ? display.progressNm / totalNm : 0;
   const days = display.elapsedHours / 24;
+  const dist = (nm: number) => fmtNum(nm * profile.distPerNm);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {/* Map + controls */}
       <div className="lg:col-span-2">
         <div ref={containerRef} className="h-[520px] w-full overflow-hidden rounded-xl border border-border" />
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button onClick={running ? pause : play} disabled={!canSail} className={running ? "btn-ghost" : "btn-primary"}>
-            {running ? "⏸ Pause" : completedRef.current ? "↻ Replay" : "▶ Sail"}
+            {running ? "⏸ Pause" : completedRef.current ? "↻ Replay" : `▶ Go`}
           </button>
           <button onClick={() => resetRef.current()} className="btn-ghost">↺ Reset</button>
           <span className="ml-1 text-xs text-faint">Time:</span>
           {[1, 3, 10].map((m) => (
-            <button key={m} onClick={() => setMultiplier(m)} className={`rounded-lg px-2.5 py-1 text-sm ${multiplier === m ? "bg-env text-bg" : "btn-ghost"}`}>
-              {m}×
-            </button>
+            <button key={m} onClick={() => setMultiplier(m)} className={`rounded-lg px-2.5 py-1 text-sm ${multiplier === m ? "bg-env text-bg" : "btn-ghost"}`}>{m}×</button>
           ))}
           <input type="number" min={1} max={100} value={multiplier} onChange={(e) => setMultiplier(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} className="input w-16" aria-label="Custom time multiplier" />
-          <label className="ml-1 flex items-center gap-1.5 text-xs text-faint">
-            <input type="checkbox" checked={showFlights} onChange={(e) => setShowFlights(e.target.checked)} /> ✈️ Flights
-          </label>
-          <label className="flex items-center gap-1.5 text-xs text-faint">
-            <input type="checkbox" checked={showVessels} onChange={(e) => setShowVessels(e.target.checked)} /> 🚢 Vessels
-          </label>
-        </div>
-
-        {/* Voyage setup */}
-        <div className="panel-2 mt-3 p-3">
-          <div className="mb-2 flex gap-2">
-            {(["preset", "custom"] as const).map((m) => (
-              <button key={m} onClick={() => setMode(m)} disabled={running} className={`flex-1 rounded-lg px-3 py-1.5 text-sm ${mode === m ? "bg-env text-bg" : "btn-ghost"}`}>
-                {m === "preset" ? "Preset: India → USA" : "Custom route"}
-              </button>
-            ))}
-          </div>
-
-          {mode === "preset" ? (
-            <div className="flex gap-2">
-              {(["suez", "cape"] as const).map((k) => (
-                <button key={k} onClick={() => setPresetKey(k)} disabled={running} className={`flex-1 rounded-lg px-3 py-1.5 text-sm ${presetKey === k ? "bg-env text-bg" : "btn-ghost"}`}>
-                  {ROUTES[k].label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="label">From</label>
-                  <select value={startCode} onChange={(e) => setStartCode(e.target.value)} disabled={running} className="input">
-                    {COUNTRIES.map((c) => (
-                      <option key={c.code} value={c.code}>{c.name} — {c.port}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">To</label>
-                  <select value={destCode} onChange={(e) => setDestCode(e.target.value)} disabled={running} className="input">
-                    {COUNTRIES.map((c) => (
-                      <option key={c.code} value={c.code}>{c.name} — {c.port}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button onClick={autoRoute} disabled={running || autoLoading} className="rounded-lg bg-overall px-3 py-1.5 text-sm font-medium text-bg disabled:opacity-50">
-                  {autoLoading ? "🧭 Routing…" : "🧭 Auto sea route"}
-                </button>
-                <button onClick={() => setDrawMode((d) => !d)} disabled={running} className={`rounded-lg px-3 py-1.5 text-sm ${drawMode ? "bg-social text-bg" : "btn-ghost"}`}>
-                  {drawMode ? "✏️ Drawing… click the sea" : "✏️ Draw path"}
-                </button>
-                <button onClick={() => setCustomWaypoints((p) => p.slice(0, -1))} disabled={running || !customWaypoints.length} className="btn-ghost text-sm">Undo point</button>
-                <button onClick={() => setCustomWaypoints([])} disabled={running || !customWaypoints.length} className="btn-ghost text-sm">Clear path</button>
-                <span className="text-xs text-faint">{customWaypoints.length} waypoint{customWaypoints.length === 1 ? "" : "s"} · drag dots to adjust</span>
-              </div>
-            </div>
+          {profile.liveFlights && (
+            <label className="ml-1 flex items-center gap-1.5 text-xs text-faint">
+              <input type="checkbox" checked={showFlights} onChange={(e) => setShowFlights(e.target.checked)} /> ✈️ Flights
+            </label>
+          )}
+          {profile.liveVessels && (
+            <label className="flex items-center gap-1.5 text-xs text-faint">
+              <input type="checkbox" checked={showVessels} onChange={(e) => setShowVessels(e.target.checked)} /> 🚢 Vessels
+            </label>
           )}
         </div>
 
-        {/* Speed */}
         <div className="panel-2 mt-3 p-3">
-          <div className="label">Cruise speed: {speedKn} kn</div>
-          <input type="range" min={8} max={26} value={speedKn} onChange={(e) => setSpeedKn(Number(e.target.value))} className="w-full accent-env" />
-          <div className="mt-1 text-xs text-faint">{SHIP.name} · fuel burn scales with speed³</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="label">From</label>
+              <select value={startCode} onChange={(e) => setStartCode(e.target.value)} disabled={running} className="input">
+                {COUNTRIES.map((c) => (<option key={c.code} value={c.code}>{c.name} — {c.port}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="label">To</label>
+              <select value={destCode} onChange={(e) => setDestCode(e.target.value)} disabled={running} className="input">
+                {COUNTRIES.map((c) => (<option key={c.code} value={c.code}>{c.name} — {c.port}</option>))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button onClick={autoRoute} disabled={running || autoLoading} className="rounded-lg bg-overall px-3 py-1.5 text-sm font-medium text-bg disabled:opacity-50">
+              {autoLoading ? "🧭 Routing…" : `🧭 Auto ${profile.routing === "sea" ? "sea" : profile.routing === "air" ? "air" : "road"} route`}
+            </button>
+            <button onClick={() => setDrawMode((d) => !d)} disabled={running} className={`rounded-lg px-3 py-1.5 text-sm ${drawMode ? "bg-social text-bg" : "btn-ghost"}`}>
+              {drawMode ? "✏️ Drawing… click the map" : "✏️ Draw path"}
+            </button>
+            <button onClick={() => setCustomWaypoints((p) => p.slice(0, -1))} disabled={running || !customWaypoints.length} className="btn-ghost text-sm">Undo point</button>
+            <button onClick={() => setCustomWaypoints([])} disabled={running || !customWaypoints.length} className="btn-ghost text-sm">Clear path</button>
+            <span className="text-xs text-faint">{customWaypoints.length} waypoint{customWaypoints.length === 1 ? "" : "s"}</span>
+          </div>
+        </div>
+
+        <div className="panel-2 mt-3 p-3">
+          <div className="label">Cruise speed: {Math.round(speedKn * profile.speedPerKn)} {profile.speedUnit}</div>
+          <input type="range" min={profile.speedMinKn} max={profile.speedMaxKn} value={speedKn} onChange={(e) => setSpeedKn(Number(e.target.value))} className="w-full accent-env" />
+          <div className="mt-1 text-xs text-faint">{profile.vehicle} · fuel burn rises with speed & faults</div>
         </div>
       </div>
 
-      {/* Dashboard + faults + log */}
       <div className="space-y-4">
         <div className="panel p-4">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Live Voyage Dashboard</h2>
-            <span className="text-xs text-faint">{Math.round(fraction * 100)}% · {display.downtimeLeft > 0 ? "⚓ stopped" : `${Math.round(display.currentSpeed)} kn`}</span>
+            <h2 className="text-sm font-semibold text-ink">Live Dashboard</h2>
+            <span className="text-xs text-faint">{Math.round(fraction * 100)}% · {display.downtimeLeft > 0 ? "⛔ stopped" : `${Math.round(display.currentSpeed * profile.speedPerKn)} ${profile.speedUnit}`}</span>
           </div>
           <div className="mb-1 text-xs text-faint">{endpoints.start} → {endpoints.dest}</div>
           <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-panel2">
@@ -579,8 +480,8 @@ export function Simulator() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Tile label="Sim time" value={`${days.toFixed(1)} d`} />
-            <Tile label="Distance" value={`${fmtNum(display.progressNm)} / ${fmtNum(totalNm)} nm`} />
-            <Tile label="Fuel burned" value={`${fmtNum(display.fuelT)} t`} accent="text-env" />
+            <Tile label="Distance" value={`${dist(display.progressNm)} / ${dist(totalNm)} ${profile.distUnit}`} />
+            <Tile label="Fuel burned" value={`${fmtNum(display.fuel)} ${profile.fuelUnit}`} accent="text-env" />
             <Tile label="CO₂ emitted" value={`${fmtNum(display.co2T)} t`} accent="text-env" />
             <Tile label="Cost" value={fmtUsd(display.costUsd)} accent="text-social" />
             <Tile label="vs baseline CO₂" value={`+${fmtNum(Math.max(0, display.co2T - baseline.co2T))} t`} accent="text-warn" />
@@ -588,9 +489,9 @@ export function Simulator() {
           {completedRef.current && display.co2T > 0 && (
             <form action={logVoyageEmission} className="mt-3">
               <input type="hidden" name="co2Kg" value={Math.round(display.co2T * 1000)} />
-              <input type="hidden" name="fuelT" value={Math.round(display.fuelT)} />
-              <input type="hidden" name="reference" value={`Voyage ${endpoints.start}→${endpoints.dest}`} />
-              <button className="btn-primary w-full">Log this voyage → Carbon Transactions</button>
+              <input type="hidden" name="fuelT" value={Math.round(display.fuel)} />
+              <input type="hidden" name="reference" value={`${profile.label} ${endpoints.start}→${endpoints.dest}`} />
+              <button className="btn-primary w-full">Log this trip → Carbon Transactions</button>
             </form>
           )}
         </div>
@@ -604,15 +505,15 @@ export function Simulator() {
         </div>
 
         <div className="panel p-4">
-          <h2 className="mb-1 text-sm font-semibold text-ink">Drag-and-drop maritime faults</h2>
-          <p className="mb-2 text-[11px] text-faint">Drop a fault, then drag its zone onto the route. The ship reacts live as it sails through — even mid-voyage. Double-click a marker to remove it.</p>
+          <h2 className="mb-1 text-sm font-semibold text-ink">Drag-and-drop {profile.label.toLowerCase()} faults</h2>
+          <p className="mb-2 text-[11px] text-faint">Drop a fault, then drag its zone onto the path. The {profile.emoji} reacts live as it passes through — even mid-trip. Double-click to remove.</p>
           <div className="grid grid-cols-1 gap-1.5">
-            {EVENT_TYPES.map((ev) => (
-              <button key={ev.type} onClick={() => dropFault(ev.type)} className="flex items-center gap-2 rounded-lg border border-border bg-panel2 px-2.5 py-1.5 text-left text-xs text-muted hover:text-ink">
-                <span className="text-base">{ev.icon}</span>
+            {profile.faults.map((f) => (
+              <button key={f.type} onClick={() => dropFault(f.type)} className="flex items-center gap-2 rounded-lg border border-border bg-panel2 px-2.5 py-1.5 text-left text-xs text-muted hover:text-ink">
+                <span className="text-base">{f.icon}</span>
                 <span className="flex-1">
-                  <span className="font-medium text-ink">Drop {ev.label}</span>
-                  <span className="block text-[10px] text-faint">{ev.description}</span>
+                  <span className="font-medium text-ink">Drop {f.label}</span>
+                  <span className="block text-[10px] text-faint">{f.description}</span>
                 </span>
               </button>
             ))}
@@ -626,12 +527,10 @@ export function Simulator() {
           <h2 className="mb-2 text-sm font-semibold text-ink">Event log</h2>
           {log.length ? (
             <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-muted">
-              {log.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
+              {log.map((l, i) => (<li key={i}>{l}</li>))}
             </ul>
           ) : (
-            <p className="text-xs text-faint">Set a route, then press Sail.</p>
+            <p className="text-xs text-faint">Pick From/To, then press Go.</p>
           )}
         </div>
       </div>
@@ -647,14 +546,11 @@ function Tile({ label, value, accent = "text-ink" }: { label: string; value: str
     </div>
   );
 }
-
 function Row({ label, co2, cost, days, danger = false }: { label: string; co2: number; cost: number; days: number; danger?: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <span className={danger ? "text-danger" : "text-muted"}>{label}</span>
-      <span className="text-faint">
-        {fmtNum(days, 0)} d · {fmtNum(co2)} t · {fmtUsd(cost)}
-      </span>
+      <span className="text-faint">{fmtNum(days, 0)} d · {fmtNum(co2)} t · {fmtUsd(cost)}</span>
     </div>
   );
 }
