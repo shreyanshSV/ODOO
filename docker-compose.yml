@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ecosphere-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: esg
+      POSTGRES_PASSWORD: esg
+      POSTGRES_DB: esg
+    ports:
+      - "5433:5432" # host 5433 -> container 5432 (avoids clashing with a native Postgres on 5432)
+    volumes:
+      - esg-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U esg -d esg"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Automation engine (slice 7): notifications, reminders, badge/compliance hooks.
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ecosphere-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_SECURE_COOKIE: "false"
+      GENERIC_TIMEZONE: "UTC"
+    volumes:
+      - esg-n8n:/home/node/.n8n
+
+volumes:
+  esg-db:
+  esg-n8n:
