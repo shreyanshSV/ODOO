@@ -11,6 +11,7 @@ export const SOCIAL_TABS = [
   { label: "Employee Participation", href: "/social/participation" },
   { label: "Diversity Dashboard", href: "/social/diversity" },
   { label: "Company Setup", href: "/social/onboarding" },
+  { label: "Domain Tool", href: "/social/domain-tool" },
 ];
 
 export const GOV_TABS = [
