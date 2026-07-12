@@ -98,3 +98,24 @@ export async function recomputeScores() {
   await persistEsgSnapshot();
   revalidatePath("/");
 }
+
+/* ---------- Log a simulated voyage's emissions as a Carbon Transaction ---------- */
+
+export async function logVoyageEmission(fd: FormData) {
+  const co2Kg = num(fd, "co2Kg");
+  const fuelT = num(fd, "fuelT");
+  const reference = str(fd, "reference") || "Simulated voyage";
+  if (co2Kg <= 0) return;
+  await prisma.carbonTransaction.create({
+    data: {
+      source: "FLEET",
+      reference,
+      quantity: fuelT,
+      co2Kg,
+      auto: false,
+      date: new Date(),
+    },
+  });
+  revalidatePath("/environmental/carbon-transactions");
+  revalidatePath("/");
+}

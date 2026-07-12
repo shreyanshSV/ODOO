@@ -1,4 +1,5 @@
 export const ENV_TABS = [
+  { label: "Live Map & Simulator", href: "/environmental/simulator" },
   { label: "Emission Factors", href: "/environmental/emission-factors" },
   { label: "Carbon Transactions", href: "/environmental/carbon-transactions" },
   { label: "Environmental Goals", href: "/environmental/goals" },

@@ -27,6 +27,7 @@ const GROUPS: Group[] = [
     icon: <Leaf size={16} />,
     color: "text-env",
     items: [
+      { label: "Live Map & Simulator", href: "/environmental/simulator" },
       { label: "Emission Factors", href: "/environmental/emission-factors" },
       { label: "Carbon Transactions", href: "/environmental/carbon-transactions" },
       { label: "Environmental Goals", href: "/environmental/goals" },
