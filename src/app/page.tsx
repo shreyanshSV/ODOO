@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Leaf, AlertTriangle, Factory, ShieldCheck, Plus, Trophy, FileBarChart } from "lucide-react";
+import { Leaf, AlertTriangle, Factory, ShieldCheck, Plus, Trophy, FileBarChart, TrendingDown, BarChart3, Clock, Zap } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getEsgSnapshot, getEmissionsTrend } from "@/lib/esg";
 import { Card, ModuleTabs, PageHeader, ScoreTile } from "@/components/ui";
@@ -83,17 +83,17 @@ export default async function DashboardPage() {
 
       {/* Charts */}
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Card title="📉 Emissions Trend (12 mo)">
+        <Card title={<><TrendingDown size={15} className="text-env" /> Emissions Trend (12 mo)</>}>
           <EmissionsTrend data={trend} />
         </Card>
-        <Card title="📊 Department ESG Ranking">
+        <Card title={<><BarChart3 size={15} className="text-overall" /> Department ESG Ranking</>}>
           <DeptRanking data={ranking} />
         </Card>
       </div>
 
       {/* Activity + quick actions */}
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Card title="🕑 Recent Activity">
+        <Card title={<><Clock size={15} className="text-muted" /> Recent Activity</>}>
           {activity.length ? (
             <ul className="space-y-2.5">
               {activity.map((a, i) => (
@@ -108,7 +108,7 @@ export default async function DashboardPage() {
           )}
         </Card>
 
-        <Card title="⚡ Quick Actions">
+        <Card title={<><Zap size={15} className="text-game" /> Quick Actions</>}>
           <div className="grid gap-2">
             <Link href="/environmental/carbon-transactions" className="btn-primary">
               <Plus size={15} /> Log Carbon Data

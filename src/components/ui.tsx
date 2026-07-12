@@ -33,7 +33,7 @@ export function Card({
   className = "",
   right,
 }: {
-  title?: string;
+  title?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   right?: React.ReactNode;
@@ -42,7 +42,7 @@ export function Card({
     <section className={`panel p-4 ${className}`}>
       {(title || right) && (
         <div className="mb-3 flex items-center justify-between gap-3">
-          {title && <h2 className="text-sm font-semibold text-ink">{title}</h2>}
+          {title && <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">{title}</h2>}
           {right}
         </div>
       )}

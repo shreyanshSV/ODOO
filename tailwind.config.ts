@@ -37,7 +37,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-sans)", "Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-        display: ["var(--font-display)", "Nexo", "Kora", "Inter", "ui-serif", "Georgia", "serif"],
+        display: ["var(--font-display)", "Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
       },
       borderRadius: {
         xl: "0.9rem",
@@ -45,11 +45,12 @@ const config: Config = {
         "3xl": "1.5rem",
       },
       boxShadow: {
-        soft: "0 1px 0 rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.12)",
-        card: "2px 4px 12px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)",
-        lift: "4px 8px 24px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.5)",
-        glow: "0 0 0 3px rgba(26,122,80,0.30), 0 4px 16px rgba(26,122,80,0.25)",
-        inset: "inset 0 2px 5px rgba(0,0,0,0.20), inset 0 1px 2px rgba(0,0,0,0.14)",
+        // dark-console depth: soft ambient shadow + a faint (not glowing) top highlight
+        soft: "0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
+        card: "0 2px 8px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)",
+        lift: "0 10px 30px rgba(0,0,0,0.5), 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
+        glow: "0 0 0 3px rgba(57,153,75,0.28), 0 4px 16px rgba(57,153,75,0.22)",
+        inset: "inset 0 2px 5px rgba(0,0,0,0.28), inset 0 1px 2px rgba(0,0,0,0.18)",
       },
       keyframes: {
         "fade-in": { "0%": { opacity: "0", transform: "translateY(6px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
