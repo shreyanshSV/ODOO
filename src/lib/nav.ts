@@ -6,6 +6,7 @@ export const ENV_TABS = [
 ];
 
 export const SOCIAL_TABS = [
+  { label: "My Dashboard", href: "/social/me" },
   { label: "CSR Activities", href: "/social/csr" },
   { label: "Employee Participation", href: "/social/participation" },
   { label: "Diversity Dashboard", href: "/social/diversity" },
