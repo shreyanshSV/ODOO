@@ -90,7 +90,7 @@ export function OnboardingWizard() {
 
       {step === 1 && (
         <div className="panel p-5">
-          <h2 className="mb-1 text-sm font-semibold text-ink">Discover a company</h2>
+          <h2 className="mb-1 font-display text-base font-semibold text-ink">Discover a company</h2>
           <p className="mb-4 text-xs text-faint">
             Enter a company name and we&apos;ll find its official site, logo, industry and public ESG/CSR pages.
           </p>
@@ -176,7 +176,7 @@ export function OnboardingWizard() {
 
       {step === 3 && (
         <div className="panel p-5">
-          <h2 className="mb-3 text-sm font-semibold text-ink">Create workspace</h2>
+          <h2 className="mb-3 font-display text-base font-semibold text-ink">Create workspace</h2>
           <dl className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
             <Summary k="Company" v={data.name} />
             <Summary k="Industry" v={data.industry || "—"} />

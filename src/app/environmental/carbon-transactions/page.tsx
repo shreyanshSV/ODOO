@@ -22,7 +22,7 @@ export default async function CarbonTransactionsPage() {
   const totalKg = txns.reduce((s, t) => s + t.co2Kg, 0);
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Environmental: Carbon Transactions"
         subtitle={`${fmtNum(txns.length)} records · ${fmtNum(totalKg / 1000, 1)} t CO₂ total`}

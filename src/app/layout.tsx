@@ -1,7 +1,21 @@
 import type { Metadata } from "next";
+import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { currentUser } from "@/lib/session";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const sora = Sora({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: ["500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "EcoSphere — ESG Management Platform",
@@ -13,8 +27,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = await currentUser();
 
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className={`${inter.variable} ${sora.variable}`}>
+      <body className="font-sans">
         {user ? (
           <div className="flex min-h-screen">
             <Sidebar user={{ name: user.name ?? user.email ?? "User", email: user.email ?? "", role: user.role }} />

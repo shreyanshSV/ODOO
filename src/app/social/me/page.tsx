@@ -13,7 +13,7 @@ export default async function MyHubPage() {
   const d = await getEmployeeDashboard(user.id);
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Social: My Sustainability Hub"
         subtitle="Your CSR impact, growth and recognition"
@@ -149,15 +149,19 @@ export default async function MyHubPage() {
 }
 
 function Metric({ label, value, suffix, note, accent, progress }: { label: string; value: string; suffix?: string; note?: string; accent: string; progress?: number }) {
+  const bar = accent.replace("text-", "bg-");
   return (
-    <div className="panel-2 p-4">
-      <div className="text-[11px] text-faint">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold ${accent}`}>
-        {value} {suffix && <span className="text-sm text-faint">{suffix}</span>}
+    <div className="panel-2 card-hover p-4">
+      <div className="flex items-center gap-2">
+        <span className={`h-3 w-1 rounded-full ${bar}`} />
+        <span className="text-[11px] font-medium uppercase tracking-wider text-faint">{label}</span>
+      </div>
+      <div className={`mt-2 font-display text-2xl font-semibold tabular-nums ${accent}`}>
+        {value} {suffix && <span className="text-sm font-normal text-faint">{suffix}</span>}
       </div>
       {typeof progress === "number" && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-panel">
-          <div className={`h-full rounded-full ${accent.replace("text-", "bg-")}`} style={{ width: `${progress}%` }} />
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-bg/60">
+          <div className={`h-full rounded-full ${bar} transition-[width] duration-700 ease-out`} style={{ width: `${progress}%` }} />
         </div>
       )}
       {note && <div className="mt-1 text-[11px] text-muted">{note}</div>}
@@ -167,8 +171,8 @@ function Metric({ label, value, suffix, note, accent, progress }: { label: strin
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="panel-2 p-3">
-      <div className="text-lg font-semibold text-ink">{value}</div>
+    <div className="panel-2 card-hover p-3">
+      <div className="font-display text-lg font-semibold tabular-nums text-ink">{value}</div>
       <div className="text-[11px] text-faint">{label}</div>
     </div>
   );

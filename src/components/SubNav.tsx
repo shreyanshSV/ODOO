@@ -6,17 +6,16 @@ import { usePathname } from "next/navigation";
 export function SubNav({ items }: { items: { label: string; href: string }[] }) {
   const pathname = usePathname();
   return (
-    <div className="mb-4 flex flex-wrap gap-1.5">
+    <div className="mb-5 inline-flex flex-wrap gap-1 rounded-xl border border-border bg-panel2 p-1 shadow-inset">
       {items.map((it) => {
         const active = pathname === it.href;
         return (
           <Link
             key={it.href}
             href={it.href}
-            className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-              active
-                ? "border-border bg-panel2 text-ink"
-                : "border-transparent text-faint hover:text-ink"
+            aria-current={active ? "page" : undefined}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-overall/40 ${
+              active ? "bg-panel text-ink shadow-soft" : "text-faint hover:bg-panel/50 hover:text-ink"
             }`}
           >
             {it.label}

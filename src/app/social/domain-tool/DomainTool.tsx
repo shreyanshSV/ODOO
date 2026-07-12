@@ -82,7 +82,7 @@ export function DomainTool() {
       <div className="lg:col-span-1">
         <div className="panel p-4">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Company names</h2>
+            <h2 className="font-display text-base font-semibold text-ink">Company names</h2>
             <span className="text-xs text-faint">{names.length} {names.length === 1 ? "name" : "names"}</span>
           </div>
           <p className="mb-2 text-[11px] text-faint">One company per line. Pre-filled with 15 examples — edit, paste your own, or upload a .txt.</p>
@@ -109,8 +109,8 @@ export function DomainTool() {
       <div className="lg:col-span-2">
         <div className="panel p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">
-              Results {results.length > 0 && <span className="text-faint">· {found}/{results.length} resolved</span>}
+            <h2 className="font-display text-base font-semibold text-ink">
+              Results {results.length > 0 && <span className="text-sm font-normal text-faint">· {found}/{results.length} resolved</span>}
             </h2>
             <button onClick={downloadCsv} disabled={!results.length} className="btn-ghost text-sm disabled:opacity-40">
               <Download size={14} /> Export CSV

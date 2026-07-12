@@ -10,7 +10,7 @@ export default async function EsgConfigPage() {
   const config = await prisma.esgConfig.findUnique({ where: { id: "default" } });
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Settings: ESG Configuration"
         subtitle="Scoring weights and automation defaults"

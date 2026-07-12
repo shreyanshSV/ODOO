@@ -14,11 +14,13 @@ export function PageHeader({
   accent?: string;
   actions?: React.ReactNode;
 }) {
+  const bar = accent.replace("text-", "bg-");
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 animate-fade-in">
       <div>
-        <h1 className={`text-xl font-semibold ${accent}`}>{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-faint">{subtitle}</p>}
+        <div className={`mb-2 h-1 w-10 rounded-full ${bar}`} />
+        <h1 className={`font-display text-2xl font-semibold tracking-tight ${accent}`}>{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-faint">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
@@ -39,13 +41,29 @@ export function Card({
   return (
     <section className={`panel p-4 ${className}`}>
       {(title || right) && (
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-3">
           {title && <h2 className="text-sm font-semibold text-ink">{title}</h2>}
           {right}
         </div>
       )}
       {children}
     </section>
+  );
+}
+
+/* ---------- Section title (additive helper) ---------- */
+
+export function SectionTitle({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <h2 className={`mb-3 text-[11px] font-semibold uppercase tracking-wider text-faint ${className}`}>
+      {children}
+    </h2>
   );
 }
 
@@ -60,15 +78,50 @@ export function ScoreTile({
   value: number;
   accent: string; // tailwind text color class, e.g. "text-env"
 }) {
+  const bar = accent.replace("text-", "bg-");
+  const pct = Math.max(0, Math.min(100, value));
   return (
-    <div className="panel-2 overflow-hidden">
-      <div className={`h-1.5 w-full ${accent.replace("text-", "bg-")}`} />
+    <div className="panel-2 card-hover overflow-hidden shadow-card animate-scale-in">
+      <div className={`h-1.5 w-full ${bar}`} />
       <div className="p-4">
-        <div className="text-xs text-faint">{label}</div>
-        <div className={`mt-1 text-2xl font-semibold ${accent}`}>
-          {value} <span className="text-sm text-faint">/ 100</span>
+        <div className="text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>
+        <div className={`mt-1.5 font-display text-3xl font-semibold tabular-nums leading-none ${accent}`}>
+          {value}
+          <span className="ml-1 text-sm font-normal text-faint">/ 100</span>
+        </div>
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-bg/60">
+          <div
+            className={`h-full rounded-full ${bar} opacity-80 transition-[width] duration-700 ease-out`}
+            style={{ width: `${pct}%` }}
+          />
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---------- Stat card (additive general-purpose metric) ---------- */
+
+export function StatCard({
+  label,
+  value,
+  accent = "text-ink",
+  hint,
+}: {
+  label: string;
+  value: React.ReactNode;
+  accent?: string;
+  hint?: string;
+}) {
+  const bar = accent.replace("text-", "bg-");
+  return (
+    <div className="panel card-hover p-4">
+      <div className="flex items-center gap-2">
+        <span className={`h-3 w-1 rounded-full ${bar}`} />
+        <span className="text-[11px] font-medium uppercase tracking-wider text-faint">{label}</span>
+      </div>
+      <div className={`mt-2 font-display text-2xl font-semibold tabular-nums ${accent}`}>{value}</div>
+      {hint && <div className="mt-1 text-xs text-faint">{hint}</div>}
     </div>
   );
 }
@@ -96,7 +149,9 @@ const PILL: Record<string, string> = {
 export function Pill({ value }: { value: string }) {
   const cls = PILL[value] ?? "bg-faint/15 text-faint";
   return (
-    <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${cls}`}>
+    <span
+      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-white/5 ${cls}`}
+    >
       {titleCase(value)}
     </span>
   );
@@ -108,10 +163,13 @@ export function Progress({ value, accent = "bg-env" }: { value: number; accent?:
   const pct = Math.max(0, Math.min(100, value));
   return (
     <div className="flex items-center gap-2">
-      <div className="h-2 w-full overflow-hidden rounded-full bg-panel2">
-        <div className={`h-full rounded-full ${accent}`} style={{ width: `${pct}%` }} />
+      <div className="h-2 w-full overflow-hidden rounded-full bg-bg/70 shadow-inset">
+        <div
+          className={`h-full rounded-full ${accent} transition-[width] duration-700 ease-out`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
-      <span className="w-9 shrink-0 text-right text-xs text-muted">{pct}%</span>
+      <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted">{pct}%</span>
     </div>
   );
 }
@@ -120,8 +178,8 @@ export function Progress({ value, accent = "bg-env" }: { value: number; accent?:
 
 export function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full min-w-[640px] border-collapse">
+    <div className="overflow-x-auto rounded-xl border border-border shadow-card">
+      <table className="w-full min-w-[640px] border-collapse [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-row/50">
         <thead className="bg-row">
           <tr>
             {head.map((h) => (
@@ -138,7 +196,11 @@ export function Table({ head, children }: { head: string[]; children: React.Reac
 }
 
 export function EmptyState({ text }: { text: string }) {
-  return <div className="panel-2 p-8 text-center text-sm text-faint">{text}</div>;
+  return (
+    <div className="panel-2 flex flex-col items-center justify-center gap-2 p-10 text-center text-sm text-faint">
+      {text}
+    </div>
+  );
 }
 
 /* ---------- Top module tabs ---------- */
@@ -155,18 +217,26 @@ const TABS = [
 
 export function ModuleTabs({ active }: { active: string }) {
   return (
-    <div className="mb-5 flex flex-wrap gap-1.5 border-b border-border pb-3">
-      {TABS.map((t) => (
-        <Link
-          key={t.label}
-          href={t.href}
-          className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-            t.label === active ? "bg-panel2 text-ink" : "text-faint hover:text-ink"
-          }`}
-        >
-          {t.label}
-        </Link>
-      ))}
+    <div className="mb-6 animate-fade-in">
+      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-border bg-panel2 p-1 shadow-inset">
+        {TABS.map((t) => {
+          const isActive = t.label === active;
+          return (
+            <Link
+              key={t.label}
+              href={t.href}
+              aria-current={isActive ? "page" : undefined}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-overall/40 ${
+                isActive
+                  ? "bg-panel text-ink shadow-soft"
+                  : "text-faint hover:bg-panel/50 hover:text-ink"
+              }`}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

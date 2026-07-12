@@ -20,7 +20,7 @@ export default async function ParticipationPage() {
   const pending = participations.filter((p) => p.approvalStatus === "PENDING").length;
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Social: Approval Queue"
         subtitle={`${fmtNum(pending)} pending · ${fmtNum(participations.length)} total submissions`}

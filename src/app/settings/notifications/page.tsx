@@ -15,7 +15,7 @@ export default async function NotificationsPage() {
   });
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Settings: Notifications"
         subtitle="Recent alerts across the platform"

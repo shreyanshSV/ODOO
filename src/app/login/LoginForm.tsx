@@ -38,7 +38,11 @@ export function LoginForm() {
         <label className="label" htmlFor="password">Password</label>
         <input id="password" name="password" type="password" autoComplete="current-password" required className="input" placeholder="••••••••" />
       </div>
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+          {error}
+        </p>
+      )}
       <button disabled={loading} className="btn-primary w-full">
         {loading ? "Signing in…" : "Sign in"}
       </button>

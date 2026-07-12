@@ -20,7 +20,7 @@ export default async function CompliancePage() {
   ]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Governance: Compliance Issues"
         subtitle="Track and resolve open compliance issues"
@@ -112,7 +112,10 @@ export default async function CompliancePage() {
                 )}
                 <form action={deleteIssue}>
                   <input type="hidden" name="id" value={i.id} />
-                  <button className="text-faint hover:text-danger" aria-label="Delete">
+                  <button
+                    className="rounded text-faint transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                    aria-label="Delete"
+                  >
                     <Trash2 size={15} />
                   </button>
                 </form>

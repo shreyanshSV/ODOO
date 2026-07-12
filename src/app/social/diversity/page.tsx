@@ -1,22 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { SOCIAL_TABS } from "@/lib/nav";
-import { Card, ModuleTabs, PageHeader, Progress } from "@/components/ui";
+import { Card, ModuleTabs, PageHeader, Progress, StatCard } from "@/components/ui";
 import { SubNav } from "@/components/SubNav";
 import { fmtNum } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
-
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="panel-2 overflow-hidden">
-      <div className="h-1.5 w-full bg-social" />
-      <div className="p-4">
-        <div className="text-xs text-faint">{label}</div>
-        <div className="mt-1 text-2xl font-semibold text-social">{value}</div>
-      </div>
-    </div>
-  );
-}
 
 export default async function DiversityPage() {
   const [employees, departments] = await Promise.all([
@@ -43,7 +31,7 @@ export default async function DiversityPage() {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Social: Diversity Dashboard"
         subtitle="Workforce composition across the organization"
@@ -53,9 +41,9 @@ export default async function DiversityPage() {
       <SubNav items={SOCIAL_TABS} />
 
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatTile label="Total Employees" value={fmtNum(total)} />
-        <StatTile label="% Female" value={`${femalePct}%`} />
-        <StatTile label="Departments" value={fmtNum(departments.length)} />
+        <StatCard label="Total Employees" value={fmtNum(total)} accent="text-social" />
+        <StatCard label="% Female" value={`${femalePct}%`} accent="text-social" />
+        <StatCard label="Departments" value={fmtNum(departments.length)} accent="text-social" />
       </div>
 
       <Card title="Headcount by Department" className="mb-4">

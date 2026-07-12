@@ -66,7 +66,7 @@ export default async function DashboardPage() {
     .map((d) => ({ name: d.code || d.name.slice(0, 4), total: d.total }));
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Dashboard: Executive Overview"
         subtitle="Live ESG performance across the organization"

@@ -10,7 +10,7 @@ export default async function DomainToolPage() {
   await requireUser();
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Social: Company → Domain Tool"
         subtitle="Resolve company names to their official domains in bulk (Clearbit → DuckDuckGo → Bing), with confidence and CSV export"

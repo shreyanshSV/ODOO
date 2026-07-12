@@ -13,7 +13,7 @@ export default async function LeaderboardPage() {
   });
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Gamification: Leaderboard"
         subtitle="Employees ranked by lifetime XP"

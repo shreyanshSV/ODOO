@@ -13,7 +13,7 @@ export default async function SimulatorPage() {
   });
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Environmental: Transport Emissions Simulator"
         subtitle="Simulate ship, air and ground freight — live routes, mode-specific faults, and the emissions & cost they cause"

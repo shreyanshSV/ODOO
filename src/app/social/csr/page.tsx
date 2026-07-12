@@ -19,7 +19,7 @@ export default async function CsrPage() {
   ]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Social: CSR Activities"
         subtitle="Community and social responsibility initiatives"

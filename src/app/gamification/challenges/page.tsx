@@ -18,7 +18,7 @@ export default async function ChallengesPage() {
   ]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Gamification: Challenges"
         subtitle="Create sustainability challenges and advance them through their lifecycle"
@@ -104,7 +104,10 @@ export default async function ChallengesPage() {
             <td className="td text-right">
               <form action={deleteChallenge}>
                 <input type="hidden" name="id" value={c.id} />
-                <button className="text-faint hover:text-danger" aria-label="Delete">
+                <button
+                  className="rounded text-faint transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40"
+                  aria-label="Delete"
+                >
                   <Trash2 size={15} />
                 </button>
               </form>

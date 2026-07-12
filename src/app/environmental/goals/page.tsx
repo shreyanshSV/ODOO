@@ -22,7 +22,7 @@ export default async function GoalsPage() {
   ]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Environmental: Sustainability Goals"
         subtitle="Track reduction targets by department"

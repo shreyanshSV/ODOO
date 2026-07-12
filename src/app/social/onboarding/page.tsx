@@ -10,7 +10,7 @@ export default async function OnboardingPage() {
   await requireRole(["SUPER_ADMIN", "COMPANY_ADMIN"]); // employees/managers are bounced home
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Social: Company Workspace Generator"
         subtitle="Create a company workspace — auto-enriched from public web sources, reviewed by an admin before it's saved"

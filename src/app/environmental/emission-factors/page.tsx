@@ -12,7 +12,7 @@ export default async function EmissionFactorsPage() {
   const factors = await prisma.emissionFactor.findMany({ orderBy: { name: "asc" } });
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Environmental: Emission Factors"
         subtitle="Carbon values applied when calculating emissions"

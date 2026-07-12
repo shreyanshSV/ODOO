@@ -36,8 +36,8 @@ const config: Config = {
         ok: "#39994b",
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-        display: ["Nexo", "Kora", "Inter", "ui-serif", "Georgia", "serif"],
+        sans: ["var(--font-sans)", "Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        display: ["var(--font-display)", "Nexo", "Kora", "Inter", "ui-serif", "Georgia", "serif"],
       },
       borderRadius: {
         xl: "0.9rem",

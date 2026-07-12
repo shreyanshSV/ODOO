@@ -208,7 +208,7 @@ export default async function ReportsPage({
   const activeMeta = REPORTS.find((r) => r.type === type);
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Reports & Analytics"
         subtitle="Preview, filter, and export ESG data across every module"
@@ -219,7 +219,7 @@ export default async function ReportsPage({
       {/* Report catalogue */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {REPORTS.map((r) => (
-          <Card key={r.type}>
+          <Card key={r.type} className="card-hover">
             <div className="mb-2 flex items-center gap-2">
               {r.icon}
               <h2 className={`text-sm font-semibold ${r.accent}`}>{r.title}</h2>

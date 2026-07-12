@@ -12,7 +12,7 @@ export default async function CategoriesPage() {
   const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <PageHeader
         title="Settings: Categories"
         subtitle="Tags for CSR activities and challenges"
@@ -54,7 +54,10 @@ export default async function CategoriesPage() {
             <td className="td text-right">
               <form action={deleteCategory}>
                 <input type="hidden" name="id" value={c.id} />
-                <button className="text-faint hover:text-danger" aria-label="Delete">
+                <button
+                className="rounded text-faint transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40"
+                aria-label="Delete"
+              >
                   <Trash2 size={15} />
                 </button>
               </form>
