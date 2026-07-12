@@ -112,6 +112,8 @@ model Company {
   industry     String?
   headquarters String?
   description  String?
+  csrCategories String[] @default([])
+  goals         String[] @default([])
   createdAt    DateTime @default(now())
 
   users       User[]

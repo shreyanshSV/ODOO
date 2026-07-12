@@ -9,6 +9,7 @@ export const SOCIAL_TABS = [
   { label: "CSR Activities", href: "/social/csr" },
   { label: "Employee Participation", href: "/social/participation" },
   { label: "Diversity Dashboard", href: "/social/diversity" },
+  { label: "Company Setup", href: "/social/onboarding" },
 ];
 
 export const GOV_TABS = [
