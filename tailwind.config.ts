@@ -39,10 +39,15 @@ const config: Config = {
       },
       borderRadius: { "2xl": "1rem", "3xl": "1.5rem" },
       boxShadow: {
-        soft: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
-        card: "0 4px 24px -8px rgb(16 24 40 / 0.10)",
-        lift: "0 12px 40px -12px rgb(16 24 40 / 0.25)",
-        glow: "0 0 0 1px rgb(16 185 129 / 0.2), 0 8px 30px -8px rgb(16 185 129 / 0.35)",
+        // Skeuomorphic physical shadow tokens
+        soft:  "0 1px 0 rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.12)",
+        card:  "2px 4px 12px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)",
+        lift:  "4px 8px 24px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.5)",
+        glow:  "0 0 0 3px rgba(26,122,80,0.30), 0 4px 16px rgba(26,122,80,0.25)",
+        inset: "inset 0 2px 5px rgba(0,0,0,0.20), inset 0 1px 2px rgba(0,0,0,0.14)",
+        "btn": "0 2px 0 #0f5a38, 0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25)",
+        "btn-press": "inset 0 2px 4px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.15)",
+        "emboss": "0 1px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.10), 1px 0 0 rgba(255,255,255,0.3), -1px 0 0 rgba(0,0,0,0.06)",
       },
       keyframes: {
         "fade-in": { "0%": { opacity: "0", transform: "translateY(6px)" }, "100%": { opacity: "1", transform: "translateY(0)" } },
