@@ -69,9 +69,9 @@ function baselineFor(totalNm: number, speedKn: number) {
   return { days, fuelT, co2T: fuelT * SHIP.co2PerTonneFuel, costUsd: fuelT * SHIP.fuelUsdPerTonne + SHIP.charterUsdPerDay * days };
 }
 function worstFor(totalNm: number) {
-  const speed = SHIP.cruiseKn * 0.6;
-  const sailH = totalNm / speed;
-  const sailFuel = fuelTPerHour(speed, 1.6) * sailH;
+  const sog = SHIP.cruiseKn * 0.6; // heavy-weather speed over ground
+  const sailH = totalNm / sog;
+  const sailFuel = fuelTPerHour(SHIP.cruiseKn, 1.8) * sailH; // full power + weather penalty
   const downH = 120;
   const downFuel = (AUX_FUEL_T_PER_DAY * downH) / 24;
   const days = (sailH + downH) / 24;
@@ -258,11 +258,14 @@ export function Simulator() {
           s.downtimeLeft = Math.max(0, s.downtimeLeft - dtH);
           s.currentSpeed = 0;
         } else {
-          const spd = inp.speedKn * speedFactor;
+          const spd = inp.speedKn * speedFactor; // speed over ground — weather slows progress
           let dist = spd * dtH;
           if (s.progressNm + dist > inp.totalNm) dist = inp.totalNm - s.progressNm;
           s.progressNm += dist;
-          const fuel = fuelTPerHour(spd, fuelFactor) * dtH;
+          // Engine power tracks the COMMANDED cruise speed; a fault adds an
+          // inefficiency penalty on top. So a storm burns more fuel per mile even
+          // as it slows the ship (slower ship => more hours in the storm => more CO2).
+          const fuel = fuelTPerHour(inp.speedKn, fuelFactor) * dtH;
           s.fuelT += fuel;
           s.co2T += fuel * SHIP.co2PerTonneFuel;
           s.costUsd += fuel * SHIP.fuelUsdPerTonne + charterPerHour * dtH;
